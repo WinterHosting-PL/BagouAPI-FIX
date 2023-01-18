@@ -75,7 +75,7 @@ class LicenseController extends BaseController
         }
         Mail::to($email)
             ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
-        return $addonset;
+        return $licenses;
     }
 
 }
