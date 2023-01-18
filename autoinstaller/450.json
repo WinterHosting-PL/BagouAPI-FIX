@@ -1,0 +1,19 @@
+{
+  "./filetoedit.txt": [
+    {
+      "type": "above",
+      "where": "ABOVE",
+      "add": "THIS TEXT IS ABOVE"
+    },
+    {
+      "type": "under",
+      "where": "UNDER",
+      "add": "THIS TEXT IS UNDER"
+    },
+    {
+      "type": "replace",
+      "where": "REPLACE",
+      "add": "THIS TEXT REPLACE THE OLD TEXT"
+    }
+  ]
+}

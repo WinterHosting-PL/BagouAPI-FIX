@@ -1,0 +1,272 @@
+{
+  "./app/Http/Controllers/Admin/BagoulicenseController.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "<?php\n\nnamespace Pterodactyl\\Http\\Controllers\\Admin;\n\nuse Exception;\nuse PDOException;\nuse Illuminate\\View\\View;\nuse Pterodactyl\\Models\\Bagoulicense;\nuse Illuminate\\Http\\RedirectResponse;\nuse Prologue\\Alerts\\AlertsMessageBag;\nuse Pterodactyl\\Http\\Controllers\\Controller;\nuse Pterodactyl\\Services\\Databases\\Hosts\\HostUpdateService;\nuse Pterodactyl\\Http\\Requests\\Admin\\DatabaseHostFormRequest;\nuse Pterodactyl\\Services\\Databases\\Hosts\\HostCreationService;\nuse Pterodactyl\\Services\\Databases\\Hosts\\HostDeletionService;\nuse Pterodactyl\\Contracts\\Repository\\DatabaseRepositoryInterface;\nuse Pterodactyl\\Contracts\\Repository\\LocationRepositoryInterface;\nuse Pterodactyl\\Contracts\\Repository\\DatabaseHostRepositoryInterface;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Support\\Facades\\Http;\n\nclass BagoulicenseController extends Controller\n{\n    protected $alert;\n\n    public function __construct(\n        AlertsMessageBag $alert\n    ) {\n        $this->alert = $alert;\n    }\n    /**\n     * Display licensing system\n     */\n    public function index(): View\n    {\n        return view('admin.bagoulicense.index');\n    }\n\n    /**\n     * Display license of the addon\n     *\n     * @throws \\Pterodactyl\\Exceptions\\Repository\\RecordNotFoundException\n     */\n    public function license(string $addon): View\n    {\n        $dbaddon = Bagoulicense::where('addon', $addon)->first();\n        return view('admin.bagoulicense.license', [\n            'addon' => $addon,\n            'enabled' => ($dbaddon)? $dbaddon['enabled'] : 0,\n            'usage' => ($dbaddon) ? $dbaddon['usage'] : null ,\n            'maxusage' => ($dbaddon) ? $dbaddon['maxusage'] : null,\n            'license' => ($dbaddon) ? $dbaddon['license']: 'Your license',\n        ]);\n    }\n\n    /**\n     * Set a license\n     *\n     * @throws \\Throwable\n     */\n    public function setlicense(Request $request, $addon): RedirectResponse\n    {   \n        $license = Http::accept('application/json')->get(\"https://apipm.bagou450.com/license\", [\n            'id' => $request->license,\n            'selectaddon' => $addon\n        ])->object();\n        if($license->message == 'No purchase found') {\n            $this->alert->danger('License not found please contact me on discord')->flash();\n            return redirect()->route('admin.bagoulicense.license', $addon);\n        } else if($license->message == 'Too many license usage please contact me on discord') {\n            $this->alert->danger('License are already used on too many panel please contact me on discord')->flash();\n            return redirect()->route('admin.bagoulicense.license', $addon);\n        } else if ($license->blacklisted) {\n            if(Bagoulicense::where('addon', $addon)->exists()) {\n\n                Bagoulicense::where('addon', $addon)->update(['license' => $request->license, 'usage' => 1, 'maxusage' => 1, 'enabled' => false]);\n               } else {\n                Bagoulicense::create(['addon' => $addon, 'license' => $request->license, 'usage' => 1, 'maxusage' => 1, 'enabled' => false]);\n               }\n            $this->alert->danger('You are BLACKLISTED (probably because of a paypal dispute)')->flash();\n            return redirect()->route('admin.bagoulicense.license', $addon);\n         } else if($license->message == 'Not the good addon') {\n            $this->alert->danger('This license is not for this addon!')->flash();\n            return redirect()->route('admin.bagoulicense.license', $addon);\n        } else if($license->message == 'done' && $license->name == $addon && !$license->blacklisted) {\n            if(Bagoulicense::where('addon', $addon)->exists()) {\n\n                Bagoulicense::where('addon', $addon)->update(['license' => $request->license, 'usage' => $license->usage, 'maxusage' => $license->maxusage, 'enabled' => true]);\n               } else {\n                Bagoulicense::create(['addon' => $addon, 'license' => $request->license, 'usage' => $license->usage, 'maxusage' => $license->maxusage, 'enabled' => true]);\n               }\n        \n               $this->alert->success('License updated sucessfully!')->flash();\n               return redirect()->route('admin.bagoulicense.license', $addon);\n        }\n\n        $this->alert->danger('Error!')->flash();\n        return redirect()->route('admin.bagoulicense.license', $addon);\n    }\n\n /**\n     * Rmove a license\n     *\n     * @throws \\Throwable\n     */\n    public function removelicense($addon): RedirectResponse\n    {   \n            if(Bagoulicense::where('addon', $addon)->exists()) {\n                $transaction = Bagoulicense::where('addon', $addon)->first();\n                if(!$transaction) {\n                    $this->alert->danger('No license found.')->flash();\n                    return redirect()->route('admin.bagoulicense.license', $addon);\n                }\n                $transaction = $transaction['license'];\n                $license = Http::delete(\"https://apipm.bagou450.com/license?id=$transaction\")->object();\n                Bagoulicense::where('addon', $addon)->delete();\n                $this->alert->success('License removed sucessfully')->flash();\n                return redirect()->route('admin.bagoulicense.license', $addon);        \n               } else {\n                $this->alert->danger('No license found.')->flash();\n                return redirect()->route('admin.bagoulicense.license', $addon);     \n            }\n\n    }\n}\n"
+    }
+  ],
+  "./app/Http/Controllers/Api/Client/Servers/VersionsController.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "<?php\n\nnamespace Pterodactyl\\Http\\Controllers\\Api\\Client\\Servers;\n\nuse Pterodactyl\\Models\\Server;\nuse Pterodactyl\\Repositories\\Eloquent\\ServerRepository;\nuse Pterodactyl\\Http\\Controllers\\Api\\Client\\ClientApiController;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Support\\Facades\\Http;\nuse Pterodactyl\\Repositories\\Wings\\DaemonFileRepository;\nuse Pterodactyl\\Facades\\Activity;\nuse Pterodactyl\\Models\\Bagoulicense;\n\nclass VersionsController extends ClientApiController\n{\n    /**\n     * @var \\Pterodactyl\\Repositories\\Eloquent\\ServerRepository\n     */\n    private $repository;\n\n    /**\n     * ClientController constructor.\n     */\n    public function __construct(ServerRepository $repository, DaemonFileRepository $fileRepository)\n    {\n        parent::__construct();\n\n        $this->repository = $repository;\n        $this->fileRepository = $fileRepository;\n    }\n    public function listversion(Request $request)\n    {    \t       \n        $license = Bagoulicense::where('addon', 'mcversions')->first();\n        if(!$license) {\n            return new BadRequestHttpException('No license for this addons please setup the license trough admin tab.');\n        }\n        $license = $license['license'];\n        $serverjar = $request->serverjar;\n        $type = $request->type;\n        $versions = array();\n        $url = $_SERVER['SERVER_NAME'];\n        $versions = Http::accept('application/json')->get(\"https://apipm.bagou450.com/mcversions?id=$license&type=$serverjar&stype=$type&url=$url\")->object();\n        if (isset($versions->message)) {\n            return array(\"status\" => \"error\", \"response\"=> array());\n        }\n\t    return json_encode($versions);\n    }\n    public function installversion(Server $server, Request $request): String\n    {\n        $license = Bagoulicense::where('addon', 'mcversions')->first();\n        if(!$license) {\n            return new BadRequestHttpException('No license for this addons please setup the license trough admin tab.');\n        }\n        $license = $license['license'];\n        $version = $request->minecraftVersions['version'];\n        ini_set('memory_limit', '512M');\n        $urlsize = \"\";\n        if($request->type == '3') {\n            $url =  $request->minecraftVersions['Url'];\n            $url = $this->resolveRedirect(\"https://apipm.bagou450.com/downloadmcversion?id=$license&type=$request->type&version=$version&stype=$request->stype&url=$url&zip=no\");\n            $this->fileRepository->setServer($server)->pull($url, \"/\");\n            $urlsize = get_headers($url, true)['Content-Length'];\n        } else {\n            if($request->stype == 'fabric' || $request->stype == 'forge' || $request->stype == 'mohist') {\n                $url = $this->resolveRedirect(\"https://apipm.bagou450.com/downloadmcversion?id=$license&type=$request->type&version=$version&stype=$request->stype&url=a&zip=yes\");\n                $this->fileRepository->setServer($server)->pull($url, \"/\");\n                Server::where('id', $server->id)->update(['startup' => 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -Dterminal.jline=false -Dterminal.ansi=true $( [ ! -f unix_args.txt ] && printf %s \"-jar {{SERVER_JARFILE}}\" || printf %s \"@unix_args.txt\" )']);\n                $urlsize = get_headers($url, true)['Content-Length'];\n            } else {\n                $url = $this->resolveRedirect(\"https://apipm.bagou450.com/downloadmcversion?id=$license&type=$request->type&version=$version&stype=$request->stype&url=a&zip=no\");\n                $this->fileRepository->setServer($server)->pull($url, \"/\");\n                $urlsize = get_headers($url, true)['Content-Length'];\n            }\n\n        }\n\n        $this->repository->update($server->id, [\n            'mcversion' => \"$request->stype $version\",\n        ]);\n        Activity::event('server:versions.install')\n        ->property('name', $request->name)\n        ->log();\n\n        return $urlsize;\n    }\n    public function resolveRedirect(String $url)\n        {\n            $ch = curl_init();\n\n            curl_setopt($ch, CURLOPT_URL, $url);\n            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);\n\n            curl_exec($ch);\n\n            $redirectedUrl = curl_getinfo($ch, CURLINFO_REDIRECT_URL);\n\n            curl_close($ch);\n\n            return $redirectedUrl;\n        }\n        public function getversionsize(Server $server, Request $request) {\n            $contents = $this->fileRepository\n            ->setServer($server)\n            ->getDirectory($request->get('directory') ?? '/');\n            $results = array_filter($contents, function($content) {\n                global $request;\n                return $content['name'] == \"$request->filename\";\n            });\n            $size = array_shift($results)['size'];\n            \n            return $size;\n        }\n}"
+    }
+  ],
+  "./database/migrations/2022_05_21_133943_add_version_field_to_servers_table.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nclass AddVersionFieldToServersTable extends Migration\n{\n    /**\n     * Run the migrations.\n     *\n     * @return void\n     */\n    public function up()\n    {\n\n        Schema::table('servers', function (Blueprint $table) {\n            $table->string('mcversion')->nullable()->after('updated_at');\n        });\n    }\n\n    /**\n     * Reverse the migrations.\n     *\n     * @return void\n     */\n    public function down()\n    {\n        Schema::table('servers', function (Blueprint $table) {\n            $table->dropColumn('mcversion');\n        });\n    }\n}"
+    }
+  ],
+  "./database/migrations/2022_07_04_151819_create_bagoulicense_table.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nclass CreateBagoulicenseTable extends Migration\n{\n    /**\n     * Run the migrations.\n     *\n     * @return void\n     */\n    public function up()\n    {\n        Schema::create('bagoulicense', function (Blueprint $table) {\n            $table->id();\n            $table->string('addon');\n            $table->string('license');\n            $table->integer('usage');\n            $table->integer('maxusage');\n            $table->boolean('enabled');\n            $table->timestamps();\n        });\n    }\n\n    /**\n     * Reverse the migrations.\n     *\n     * @return void\n     */\n    public function down()\n    {\n        Schema::dropIfExists('bagoulicense');\n    }\n}\n"
+    }
+  ],
+  "./public/versionlist.json": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "[\n         {\n                \"Url\": \"https://speed.hetzner.de/1GB.bin\",\n                \"name\": \"MY VERSION OF MINECRAFT\",\n                \"version\": \"1.8\"\n\n         },\n         {\n                \"Url\": \"VersionUrl2\",\n                \"name\": \"Spigoto 1.17.9\",\n                \"version\": \"1.18\"\n\n         }\n]"
+    }
+  ],
+  "./resources/scripts/api/server/version/": [
+    {
+      "type": "folder"
+    }
+  ],
+  "./resources/scripts/api/server/version/getMinecraftVersions.ts": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import useSWR from 'swr';\nimport http, { VersionsResult } from '@/api/http';\nexport default (uuid: string, type: string, serverjar: string) => {\n  return useSWR<VersionsResult<any>>(['server:minecraftVersion' + type], async () => {\n    const { data } = await http.get(`/api/client/servers/${uuid}/versions/listversion`, {\n      params: { type, serverjar },\n      timeout: 60000,\n    });\n    return {\n      items: data || [],\n    };\n  });\n};\n"
+    }
+  ],
+  "./resources/scripts/api/server/version/InstallMinecraftVersion.ts": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import http from '@/api/http';\n\nexport default async (\n  uuid: string,\n  name: string,\n  stype: string,\n  minecraftVersions: any,\n  type: string\n): Promise<any> => {\n  return new Promise((resolve, reject) => {\n    http\n      .post(`/api/client/servers/${uuid}/versions/installversion`, { name, type, minecraftVersions, stype })\n      .then((data) => resolve(data.data))\n      .catch(reject);\n  });\n};\n"
+    }
+  ],
+  "./resources/scripts/components/server/versions": [
+    {
+      "type": "folder"
+    }
+  ],
+  "./resources/scripts/components/server/versions/McVersionsContainer.tsx": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import React, { useEffect } from 'react';\nimport Spinner from '@/components/elements/Spinner';\nimport useFlash from '@/plugins/useFlash';\nimport FlashMessageRender from '@/components/FlashMessageRender';\nimport tw from 'twin.macro';\nimport ServerContentBlock from '@/components/elements/ServerContentBlock';\nimport VersionsList from '@/components/elements/VersionsList';\nimport McVersionsRow from './McVersionsRow';\nimport { ServerContext } from '@/state/server';\nimport { NavLink, useParams } from 'react-router-dom';\nimport getMinecraftVersions from '@/api/server/version/getMinecraftVersions';\nimport GreyRowBox from '@/components/elements/GreyRowBox';\nimport Select from '@/components/elements/Select';\n\ninterface ParamTypes {\n  stype: string;\n  type: string;\n}\n\nconst McVersionsVanillaContainer = () => {\n  const custom = false;\n  const { clearFlashes, clearAndAddHttpError } = useFlash();\n  const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);\n  const serverId = ServerContext.useStoreState((state) => state.server.data!.id);\n  const mcversion = ServerContext.useStoreState((state) => state.server.data!.mcversion);\n  const { stype, type } = useParams<ParamTypes>();\n  const { data: minecraftVersions, error, isValidating } = getMinecraftVersions(uuid, stype, type);\n  useEffect(() => {\n    if (!error) {\n      clearFlashes('server:minecraftVersion' + stype);\n\n      return;\n    }\n\n    clearAndAddHttpError({ error, key: 'server:minecraftVersion' + stype });\n  }, [error]);\n  if (!minecraftVersions || (error && isValidating)) {\n    return <Spinner size={'large'} centered />;\n  }\n  return (\n    <ServerContentBlock title={'Minecraft Version ' + stype}>\n      <FlashMessageRender byKey={'server:minecraftVersion' + stype} css={tw`mb-2`} />\n      {mcversion !== null && (\n        <p css={tw`text-lg text-center mb-2`}>\n          Current version: <span css={tw`text-cyan-600`}>{mcversion.charAt(0).toUpperCase() + mcversion.slice(1)}</span>\n        </p>\n      )}\n      <div css={tw`grid grid-cols-2 md:grid-cols-4`}>\n        <GreyRowBox css={tw`grid grid-cols-2 col-span-2 mt-2 mr-2`}>\n          <p>\n            <span css={tw`font-bold`}>Version selector</span>\n            <br />\n            Select the version you want to run your server with.\n          </p>\n          <Select\n            onChange={(e) => location.replace(`/server/${serverId}/versions/${e.target.value}`)}\n            defaultValue={`${stype}/${type}`}\n          >\n            <option key={1} value={'vanilla/1'}>\n              Vanilla\n            </option>\n            <option key={2} value={'spigot/1'}>\n              Spigot\n            </option>\n            <option key={3} value={'paper/1'}>\n              Paper\n            </option>\n            <option key={4} value={'purpur/1'}>\n              Purpur\n            </option>\n            <option key={5} value={'sponge/2'}>\n              Sponge\n            </option>\n            <option key={6} value={'bungeecord/1'}>\n              Bungeecord\n            </option>\n            <option key={7} value={'waterfall/1'}>\n              Waterfall\n            </option>\n            <option key={8} value={'velocity/1'}>\n              Velocity\n            </option>\n            <option key={9} value={'forge/2'}>\n              Forge\n            </option>\n            <option key={10} value={'fabric/2'}>\n              Fabric\n            </option>\n            <option key={11} value={'mohist/2'}>\n              Mohist\n            </option>\n            <option key={12} value={'magma/2'}>\n              Magma\n            </option>\n            {custom && (\n              <option key={13} value={'others/3'}>\n                Others\n              </option>\n            )}\n          </Select>\n        </GreyRowBox>\n        <VersionsList data={minecraftVersions} css={tw`grid grid-cols-2`}>\n          {({ items }) =>\n            !items.length ? (\n              <p css={tw`text-center text-sm text-neutral-300 col-span-3`}>Can&apos;t find any version on the server</p>\n            ) : (\n              items.map((minecraftVersions, index) => (\n                <McVersionsRow\n                  key={index}\n                  minecraftVersions={minecraftVersions}\n                  type={type}\n                  stype={stype}\n                  css={tw`mt-2 mr-2`}\n                />\n              ))\n            )\n          }\n        </VersionsList>\n      </div>\n    </ServerContentBlock>\n  );\n};\n\nexport default () => {\n  return <McVersionsVanillaContainer />;\n};\n"
+    }
+  ],
+  "./resources/scripts/components/server/versions/McVersionsRow.tsx": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import React, { useState } from 'react';\nimport { FontAwesomeIcon } from '@fortawesome/react-fontawesome';\nimport { faDownload } from '@fortawesome/free-solid-svg-icons';\nimport tw from 'twin.macro';\nimport GreyRowBox from '@/components/elements/GreyRowBox';\nimport { ServerContext } from '@/state/server';\nimport Button from '@/components/elements/Button';\nimport deleteFiles from '@/api/server/files/deleteFiles';\nimport { ApplicationStore } from '@/state';\nimport { Actions, useStoreActions } from 'easy-peasy';\nimport ConfirmationModal from '@/components/elements/ConfirmationModal';\nimport setSelectedDockerImage from '@/api/server/setSelectedDockerImage';\nimport InstallMinecraftVersion from '@/api/server/version/InstallMinecraftVersion';\nimport getVersionFileSize from '@/api/server/version/getVersionFileSize';\nimport decompressFiles from '@/api/server/files/decompressFiles';\nimport SpinnerOverlay from '@/components/elements/SpinnerOverlay';\nimport { bytesToString } from '@/lib/formatters';\nimport renameFiles from '@/api/server/files/renameFiles';\n\ninterface Props {\n  minecraftVersions: any;\n  className?: string;\n  stype: string;\n  type: string;\n}\n\nexport default ({ minecraftVersions, className, stype, type }: Props) => {\n  const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);\n  const [disabled, setDisabled] = useState(false);\n  const { addFlash, clearFlashes } = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes);\n  const [visible, setVisible] = useState(false);\n  const [pourcentage, setPourcentage] = useState('');\n  const name = stype.charAt(0).toUpperCase() + stype.slice(1) + ' ' + minecraftVersions.version;\n  let dockerimage = 'ghcr.io/pterodactyl/yolks:java_8';\n  if (parseInt(minecraftVersions.version.slice(2)) >= 17) {\n    dockerimage = 'ghcr.io/pterodactyl/yolks:java_16';\n  }\n  if (parseInt(minecraftVersions.version.slice(2)) >= 18) {\n    dockerimage = 'ghcr.io/pterodactyl/yolks:java_17';\n  }\n  function clear() {\n    clearFlashes();\n  }\n  const Install = () => {\n    setVisible(false);\n    setDisabled(true);\n    setPourcentage('Delete old versions...');\n    deleteFiles(uuid, '/', ['server.jar', 'zip.zip', 'libraries', 'unix_args.txt', 'user_jvm_args.txt'])\n      .then(() => {\n        InstallMinecraftVersion(\n          uuid,\n          type.charAt(0).toUpperCase() + type.slice(1) + ' ' + minecraftVersions.version,\n          stype,\n          minecraftVersions,\n          type\n        )\n          .then((data) => {\n            setPourcentage('Setup requirements...');\n            const filename =\n              stype === 'forge' || stype === 'fabric' || stype === 'mohist'\n                ? `${minecraftVersions.version}.tar.xz`\n                : `${minecraftVersions.version}`;\n            let oldsize = 0;\n            const Download = setInterval(function () {\n              getVersionFileSize(uuid, filename)\n                .then((size) => {\n                  if (data !== size) {\n                    setPourcentage(\n                      `Download in progress ${bytesToString(size)}/${bytesToString(data)} (${bytesToString(\n                        size - oldsize\n                      )}/s)`\n                    );\n                    oldsize = size;\n                  } else {\n                    clearInterval(Download);\n                    if (filename.endsWith('tar.xz')) {\n                      setPourcentage('Decompress files...');\n                      decompressFiles(uuid, '/', filename)\n                        .then(() => {\n                          setPourcentage('Delete compressed file...');\n                          deleteFiles(uuid, '/', [filename])\n                            .then(() => {\n                              setPourcentage('Change java version...');\n                              setSelectedDockerImage(uuid, dockerimage).then(() => {\n                                addFlash({\n                                  key: 'server:minecraftVersion' + stype,\n                                  type: 'success',\n                                  message: 'Version changed successfully',\n                                });\n                                setDisabled(false);\n                                setTimeout(clear, 3000);\n                              });\n                            })\n                            .catch((err) => {\n                              clearInterval(Download);\n                              addFlash({\n                                key: 'server:minecraftVersion' + stype,\n                                type: 'error',\n                                message: \"Can't install the version.\",\n                              });\n                              console.log(err);\n                              setDisabled(false);\n                              setTimeout(clear, 3000);\n                            });\n                        })\n                        .catch((err) => {\n                          clearInterval(Download);\n                          addFlash({\n                            key: 'server:minecraftVersion' + stype,\n                            type: 'error',\n                            message: \"Can't install the version.\",\n                          });\n                          console.log(err);\n                          setDisabled(false);\n                          setTimeout(clear, 3000);\n                        });\n                    } else {\n                      setPourcentage('Rename files...');\n                      renameFiles(uuid, '/', [{ from: filename, to: 'server.jar' }])\n                        .then(() => {\n                          setPourcentage('Change java version...');\n                          setSelectedDockerImage(uuid, dockerimage)\n                            .then(() => {\n                              addFlash({\n                                key: 'server:minecraftVersion' + stype,\n                                type: 'success',\n                                message: 'Version changed successfully',\n                              });\n                              setDisabled(false);\n                              setTimeout(clear, 3000);\n                            })\n                            .catch((err) => {\n                              clearInterval(Download);\n                              addFlash({\n                                key: 'server:minecraftVersion' + stype,\n                                type: 'error',\n                                message: \"Can't install the version.\",\n                              });\n                              console.log(err);\n                              setDisabled(false);\n                              setTimeout(clear, 3000);\n                            });\n                        })\n                        .catch((err) => {\n                          clearInterval(Download);\n                          addFlash({\n                            key: 'server:minecraftVersion' + stype,\n                            type: 'error',\n                            message: \"Can't install the version.\",\n                          });\n                          console.log(err);\n                          setDisabled(false);\n                          setTimeout(clear, 3000);\n                        });\n                    }\n                  }\n                })\n                .catch((err) => {\n                  clearInterval(Download);\n                  addFlash({\n                    key: 'server:minecraftVersion' + stype,\n                    type: 'error',\n                    message: \"Can't install the version.\",\n                  });\n                  console.log(err);\n                  setDisabled(false);\n                });\n            }, 1000);\n          })\n          .catch((error) => {\n            addFlash({\n              key: 'server:minecraftVersion' + stype,\n              type: 'error',\n              message: \"Can't install the version.\",\n            });\n            console.log(error);\n            setDisabled(false);\n          });\n      })\n      .catch((error) => {\n        addFlash({\n          key: 'server:minecraftVersion' + stype,\n          type: 'error',\n          message: \"Can't install the version.\",\n        });\n        console.log(error);\n        setDisabled(false);\n      });\n  };\n  return (\n    <GreyRowBox css={tw`grid grid-rows-2`} className={className}>\n      <SpinnerOverlay fixed={true} size={'large'} visible={disabled}>\n        <div css={tw`text-white mt-2`}>{pourcentage}</div>\n      </SpinnerOverlay>\n      <ConfirmationModal\n        visible={visible}\n        title={`Install the ${name}?`}\n        buttonText={'Install'}\n        onConfirmed={() => Install()}\n        onModalDismissed={() => setVisible(false)}\n      >\n        <p css={tw`text-neutral-300`}>This action remove server.jar and libraries folder from the server.</p>\n        <p css={tw`text-neutral-300`}>Are you sure you want to continue?</p>\n      </ConfirmationModal>\n      <div css={tw`mx-auto`}>\n        <p css={tw`flex`}>\n          <img src={`https://cdn.bagou450.com/img/${stype}-icon.jpg`} css={tw`mr-3 h-8 w-8`} />\n          <div css={tw`my-auto`}>\n            {stype.charAt(0).toUpperCase() + stype.slice(1) + ': '}\n            <span css={tw`text-cyan-600`}>{minecraftVersions.version} </span>\n          </div>\n        </p>\n      </div>\n      <div css={tw`mx-auto mt-2`}>\n        <Button\n          type={'button'}\n          color={'grey'}\n          isSecondary\n          onClick={() => setVisible(true)}\n          isLoading={disabled}\n          title='Install'\n        >\n          <p css={disabled ? tw`mr-4 ml-4 invisible` : tw`mr-4 ml-4`}>\n            <FontAwesomeIcon icon={faDownload} /> Install\n          </p>\n        </Button>\n      </div>\n    </GreyRowBox>\n  );\n};\n"
+    }
+  ],
+  "./resources/scripts/routers/ServerElements.tsx": [
+    {
+      "type": "newfile",
+      "theme": "no",
+      "add": "import React from 'react';\nimport { ServerContext } from '@/state/server';\nimport routes from '@/routers/routes';\nimport Can from '@/components/elements/Can';\nimport { NavLink, Route, Switch, useRouteMatch } from 'react-router-dom';\nimport PermissionRoute from '@/components/elements/PermissionRoute';\nimport Spinner from '@/components/elements/Spinner';\nimport { NotFound } from '@/components/elements/ScreenBlock';\nimport TransitionRouter from '@/TransitionRouter';\nimport { useLocation } from 'react-router';\n\ninterface Props {\n    route: any;\n}\n\nconst NavItem = ({ route }: Props) => {\n    const match = useRouteMatch<{ id: string }>();\n\n    const nestId = ServerContext.useStoreState(state => state.server.data?.nestId);\n    const eggId = ServerContext.useStoreState(state => state.server.data?.eggId);\n\n    const to = (value: string, url = false) => {\n        return `${(url ? match.url : match.path).replace(/\\/*$/, '')}/${value.replace(/^\\/+/, '')}`;\n    };\n\n    return (\n        ((route.nestIds && route.nestIds.includes(nestId ?? 0))\n            || (route.eggIds && route.eggIds.includes(eggId ?? 0))\n            || (route.nestId && route.nestId === nestId)\n            || (route.eggId && route.eggId === eggId)\n            || (!route.eggIds && !route.nestIds && !route.nestId && !route.eggId)) &&\n        <NavLink to={to(route.path, true)} exact={route.exact}>\n            {route.name}\n        </NavLink>\n    );\n}\n\nexport const Navigation = () => {\n    return (\n        <>\n            {routes.server\n                .filter((route) => !!route.name)\n                .map((route) =>\n                    route.permission ? (\n                        <Can key={route.path} action={route.permission} matchAny>\n                            <NavItem route={route} />\n                        </Can>\n                    ) : (\n                        <React.Fragment key={route.path}>\n                            <NavItem route={route} />\n                        </React.Fragment>\n                    )\n                )}\n        </>\n    );\n}\n\nexport const ComponentLoader = () => {\n    const match = useRouteMatch<{ id: string }>();\n    const location = useLocation();\n\n    const serverNestId = ServerContext.useStoreState(state => state.server.data?.nestId);\n    const serverEggId = ServerContext.useStoreState(state => state.server.data?.eggId);\n\n    const to = (value: string, url = false) => {\n        return `${(url ? match.url : match.path).replace(/\\/*$/, '')}/${value.replace(/^\\/+/, '')}`;\n    };\n\n    return (\n        <>\n            <TransitionRouter>\n                <Switch location={location}>\n                    {routes.server.map(({ path, permission, component: Component, nestIds, eggIds, nestId, eggId }) => {\n                        return (\n                            ((nestIds && nestIds.includes(serverNestId ?? 0))\n                                || (eggIds && eggIds.includes(serverEggId ?? 0))\n                                || (nestId && serverNestId === nestId)\n                                || (eggId && serverEggId === eggId)\n                                || (!eggIds && !nestIds && !nestId && !eggId)) &&\n                            <PermissionRoute key={path} permission={permission} path={to(path)} exact>\n                                <Spinner.Suspense>\n                                    <Component />\n                                </Spinner.Suspense>\n                            </PermissionRoute>\n                        )\n                    })}\n                    <Route path={'*'} component={NotFound} />\n                </Switch>\n            </TransitionRouter>\n        </>\n    );\n}"
+    }
+  ],
+  "resources/scripts/routers/routes.ts": [
+    {
+      "type": "under",
+      "theme": "no",
+      "where": "       {\n            path: '/files',\n            permission: 'file.*',\n            name: 'Files',\n            component: FileManagerContainer,\n        },",
+      "add": "    {\n      path: '/versions/:stype/:type',\n      permission: 'file.*',\n      name: undefined,\n      nestId: 1,\n      component: McVersionsContainer,\n    },\n    {\n      path: '/versions/vanilla/1',\n      permission: 'file.*',\n      name: 'Versions',\n      nestId: 1,\n      component: McVersionsContainer,\n    },"
+    },
+    {
+      "type": "under",
+      "theme": "no",
+      "where": "import ServerActivityLogContainer from '@/components/server/ServerActivityLogContainer';",
+      "add": "import McVersionsContainer from '@/components/server/versions/McVersionsContainer';"
+    },
+    {
+      "type": "under",
+      "theme": "no",
+      "where": "permission: string | string[] | null;",
+      "add": "    nestId?: number;\n    eggId?: number;\n    nestIds?: number[];\n    eggIds?: number[];"
+    }
+  ],
+    "./resources/scripts/routers/ServerRouter.tsx": [
+    {
+      "type": "replace",
+      "theme": "no",
+      "where": "{routes.server\n                                    .filter((route) => !!route.name)\n                                    .map((route) =>\n                                        route.permission ? (\n                                            <Can key={route.path} action={route.permission} matchAny>\n                                                <NavLink to={to(route.path, true)} exact={route.exact}>\n                                                    {route.name}\n                                                </NavLink>\n                                            </Can>\n                                        ) : (\n                                            <NavLink key={route.path} to={to(route.path, true)} exact={route.exact}>\n                                                {route.name}\n                                            </NavLink>\n                                        )\n                                    )}",
+      "add": "<Navigation />"
+    },
+    {
+      "type": "replace",
+      "theme": "no",
+      "where": "{routes.server.map(({ path, permission, component: Component }) => (\n                                        <PermissionRoute key={path} permission={permission} path={to(path)} exact>\n                                            <Spinner.Suspense>\n                                                <Component />\n                                            </Spinner.Suspense>\n                                        </PermissionRoute>\n                                    ))}",
+      "add": "<ComponentLoader />"
+    },
+    {
+      "type": "under",
+      "theme": "no",
+      "where": "import routes from '@/routers/routes';",
+      "add": "import { Navigation, ComponentLoader } from '@/routers/ServerElements';"
+    },
+    {
+      "type": "above",
+      "theme": "yes",
+      "where": "{rootAdmin &&",
+      "add": "\t\t\t\t{nestId === 1 &&\n                                    <Can action={'file.*'}>\n                                        <NavLink to={`${match.url}/versions/vanilla/1`}>Version</NavLink>\n                                    </Can>\n                                }"
+    },
+    {
+      "type": "above",
+      "theme": "yes",
+      "where": "<Route path={'*'} component={NotFound} />",
+      "add": "\t\t\t\t{nestId === 1 &&\n                                    <Route path={`${match.path}/versions/:stype/:type`}>\n                                        <Can action={'file.*'}>\n                                            <McVersionsContainer/>\n                                        </Can>\n                                    </Route>\n    \t\t\t\t}\t"
+    },
+    {
+      "type": "above",
+      "theme": "yes",
+      "where": "const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);",
+      "add": "const nestId = ServerContext.useStoreState(state => state.server.data?.nestId);"
+    },
+    {
+      "type": "under",
+      "theme": "yes",
+      "where": "from 'react';",
+      "add": "import McVersionsContainer from '@/components/server/versions/McVersionsContainer';"
+    }
+  ],
+  "./resources/scripts/api/server/getServer.ts": [
+    {
+      "type": "under",
+      "where": "allocations: Allocation[];",
+      "theme": "any",
+      "add": "   nestId: number;\n    eggId: number;"
+    },
+    {
+      "type": "under",
+      "theme": "any",
+      "where": "    allocations: ((data.relationships?.allocations as FractalResponseList | undefined)?.data || []).map(\n        rawDataToServerAllocation\n    ),\n",
+      "add": "    nestId: data.nest_id,\n    eggId: data.egg_id,"
+    },
+    {
+      "type": "under",
+      "where": "allocations: Allocation[];",
+      "theme": "any",
+      "add": "  mcversion: string;\n"
+    },
+    {
+      "type": "under",
+      "theme": "any",
+      "where": "    allocations: ((data.relationships?.allocations as FractalResponseList | undefined)?.data || []).map(\n        rawDataToServerAllocation\n    ),\n",
+      "add": "  mcversion: data.mcversion,\n"
+    }
+  ],
+  "./resources/lang/en/activity.php": [
+    {
+      "type": "above",
+      "theme": "any",
+      "add": "         'versions' => [\n            'install' => 'Installation of :name',\n        ],",
+      "where": "'subuser' => ["
+    }
+  ],
+    "./routes/api-client.php": [
+    {
+      "type": "above",
+      "theme": "any",
+      "add": "    Route::group(['prefix' => '/versions'], function () {\n        Route::get('/listversion', [Client\\Servers\\VersionsController::class, 'listversion']);\n        Route::get('/getversionsize', [Client\\Servers\\VersionsController::class, 'getversionsize']);\n\n        Route::post('/installversion', [Client\\Servers\\VersionsController::class, 'installversion']);\n    });",
+      "where": "    Route::group(['prefix' => '/settings'], function () {"
+    }
+  ],
+  "./routes/admin.php": [
+    {
+      "type": "under",
+      "theme": "any",
+      "add": "/*\n|--------------------------------------------------------------------------\n| Bagou License Controller Routes\n|--------------------------------------------------------------------------\n|\n| Endpoint: /admin/bagoulicense\n|\n*/\nRoute::group(['prefix' => 'bagoulicense'], function () {\n    Route::get('/', [Admin\\BagoulicenseController::class, 'index'])->name('admin.bagoulicense');\n    Route::get('/{addon}', [Admin\\BagoulicenseController::class, 'license'])->name('admin.bagoulicense.license');\n\n    Route::post('/{addon}', [Admin\\BagoulicenseController::class, 'setlicense']);\n\n    Route::delete('/{addon}', [Admin\\BagoulicenseController::class, 'removelicense']);\n\n});",
+      "where": "    Route::delete('/egg/{egg:id}/variables/{variable:id}', [Admin\\Nests\\EggVariableController::class, 'destroy']);\n});"
+    }
+  ],
+    "./app/Transformers/Api/Client/ServerTransformer.php": [
+      {
+      "type": "under",
+      "theme": "any",
+      "where": "'name' => $server->name,",
+      "add": "            'nest_id' => $server->nest_id,\n            'egg_id' => $server->egg_id,"
+    },
+            {
+      "type": "under",
+      "theme": "any",
+      "where": "'name' => $server->name,",
+      "add": "'mcversion' => $server->mcversion,\n"
+    }
+  ],
+  "./resources/scripts/api/http.ts": [
+    {
+      "type": "above",
+      "theme": "any",
+      "where": "export interface PaginationDataSet {",
+      "add": "export interface VersionsResult<T> {\n  items: T[];\n}"
+    },
+    {
+      "type": "replace",
+      "theme": "any",
+      "where": "20000",
+      "add": "120000"
+    }
+  ],
+  "./resources/scripts/components/elements/VersionsList.tsx": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import React from 'react';\nimport { VersionsResult } from '@/api/http';\ninterface RenderFuncProps<T> {\n  items: T[];\n}\n\ninterface Props<T> {\n  data: VersionsResult<T>;\n  children: (props: RenderFuncProps<T>) => React.ReactNode;\n}\n\nfunction VersionsList<T>({ data: { items }, children }: Props<T>) {\n  return <>{children({ items })}</>;\n}\n\nexport default VersionsList;\n"
+    }
+  ],
+    "./app/Models/Bagoulicense.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "<?php\n\nnamespace Pterodactyl\\Models;\n\n/**\n * @property int $id\n * @property string $uuid\n * @property int $nest_id\n * @property string $author\n * @property string $name\n * @property string|null $description\n * @property array|null $features\n * @property string $docker_image -- deprecated, use $docker_images\n * @property string $update_url\n * @property array<string, string> $docker_images\n * @property array|null $file_denylist\n * @property string|null $config_files\n * @property string|null $config_startup\n * @property string|null $config_logs\n * @property string|null $config_stop\n * @property int|null $config_from\n * @property string|null $startup\n * @property bool $script_is_privileged\n * @property string|null $script_install\n * @property string $script_entry\n * @property string $script_container\n * @property int|null $copy_script_from\n * @property \\Carbon\\Carbon $created_at\n * @property \\Carbon\\Carbon $updated_at\n * @property string|null $copy_script_install\n * @property string $copy_script_entry\n * @property string $copy_script_container\n * @property string|null $inherit_config_files\n * @property string|null $inherit_config_startup\n * @property string|null $inherit_config_logs\n * @property string|null $inherit_config_stop\n * @property string $inherit_file_denylist\n * @property array|null $inherit_features\n */\nclass BagouLicense extends Model\n{\n    /**\n     * The resource name for this model when it is transformed into an\n     * API representation using fractal.\n     */\n    public const RESOURCE_NAME = 'BagouLicense';\n\n    /**\n     * Defines the current egg export version.\n     */\n    public const EXPORT_VERSION = 'PTDL_v2';\n\n    /**\n     * The table associated with the model.\n     *\n     * @var string\n     */\n    protected $table = 'bagoulicense';\n\n    /**\n     * Fields that are not mass assignable.\n     *\n     * @var array\n     */\n    protected $fillable = [\n        'addon',\n        'license',\n        'usage',\n        'maxusage',\n        'enabled'\n    ];\n\n    /**\n     * Cast values to correct type.\n     *\n     * @var array\n     */\n    protected $casts = [\n        'addon' => 'string',\n        'license' => 'string',\n        'usage' => 'integer',\n        'maxusage' => 'integer',\n        'enabled' => 'boolean'\n    ];\n\n    /**\n     * @var array\n     */\n    public static $validationRules = [\n        'addon' => 'required|string',\n        'license' => 'required|string',\n    ];\n\n}\n"
+    }
+  ],
+    "./resources/views/admin/bagoulicense": [
+    {
+      "type": "folder"
+    }
+  ],
+      "./resources/views/admin/bagoulicense/license.blade.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "@extends('layouts.admin')\n@include('partials/admin.settings.nav', ['activeTab' => 'basic'])\n\n@section('title')\n    Bagou License\n@endsection\n\n@section('content-header')\n    <h1>Bagou License<small>Configure license for Bagou450 Addons.</small></h1>\n    <ol class=\"breadcrumb\">\n        <li><a href=\"{{ route('admin.index') }}\">Admin</a></li>\n        <li class=\"active\">Bagou License</li>\n    </ol>\n@endsection\n@section('content')\n@include('admin.bagoulicense.nav', ['addon' => $addon])\n\n    <div class=\"row\">\n        <div class=\"col-xs-12\">\n            <div class=\"box\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">Bagou License</h3>\n                </div>\n                <form action=\"{{ route('admin.settings') }}\" method=\"POST\">\n                    <div class=\"box-body\">\n                        <div class=\"row\">\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Company Name</label>\n                                <div>\n                                    <input type=\"text\" class=\"form-control\" name=\"app:name\" value=\"{{ old('app:name', config('app.name')) }}\" />\n                                    <p class=\"text-muted\"><small>This is the name that is used throughout the panel and in emails sent to clients.</small></p>\n                                </div>\n                            </div>\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Require 2-Factor Authentication</label>\n                                <div>\n                                    <div class=\"btn-group\" data-toggle=\"buttons\">\n                                        @php\n                                            $level = old('pterodactyl:auth:2fa_required', config('pterodactyl.auth.2fa_required'));\n                                        @endphp\n                                        <label class=\"btn btn-primary @if ($level == 0) active @endif\">\n                                            <input type=\"radio\" name=\"pterodactyl:auth:2fa_required\" autocomplete=\"off\" value=\"0\" @if ($level == 0) checked @endif> Not Required\n                                        </label>\n                                        <label class=\"btn btn-primary @if ($level == 1) active @endif\">\n                                            <input type=\"radio\" name=\"pterodactyl:auth:2fa_required\" autocomplete=\"off\" value=\"1\" @if ($level == 1) checked @endif> Admin Only\n                                        </label>\n                                        <label class=\"btn btn-primary @if ($level == 2) active @endif\">\n                                            <input type=\"radio\" name=\"pterodactyl:auth:2fa_required\" autocomplete=\"off\" value=\"2\" @if ($level == 2) checked @endif> All Users\n                                        </label>\n                                    </div>\n                                    <p class=\"text-muted\"><small>If enabled, any account falling into the selected grouping will be required to have 2-Factor authentication enabled to use the Panel.</small></p>\n                                </div>\n                            </div>\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Status</label>\n                                <div>\n                                   <p>@extends('layouts.admin')\n@include('partials/admin.settings.nav', ['activeTab' => 'basic'])\n\n@section('title')\n    Bagou License\n@endsection\n\n@section('content-header')\n    <h1>Bagou License<small>Configure license for Bagou450 Addons.</small></h1>\n    <ol class=\"breadcrumb\">\n        <li><a href=\"{{ route('admin.index') }}\">Admin</a></li>\n        <li class=\"active\">Bagou License</li>\n    </ol>\n@endsection\n@section('content')\n@include('admin.bagoulicense.nav', ['addon' => $addon])\n\n    <div class=\"row\">\n        <div class=\"col-xs-12\">\n            <div class=\"box\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">Bagou License</h3>\n                </div>\n                <form method=\"POST\">\n                    <div class=\"box-body\">\n                        <div class=\"row\">\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Addon license (Transaction id)</label>\n                                <div>\n                                    <input type=\"text\" class=\"form-control\" name=\"license\" value=\"{{ $license }}\" />\n                                    <p class=\"text-muted\"><small>Add here your transaction id if not work contact me on <a href=\"https://discord.bagou450.com\">discord</a></small></p>\n                                </div>\n                            </div>\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Usage</label>\n                                <div>\n                                    <p>{{ $usage && $maxusage ? \"$usage / $maxusage panel(s)\" : 'No license' }} <br> {{ $usage && $maxusage ? 'Contact me on discord for increase panel limit.' : 'For use the addon you need to insert a license' }}</p>\n                                </div>\n                            </div>\n                            <div class=\"form-group col-md-4\">\n                                <label class=\"control-label\">Status</label>\n                                <div>\n                                   <p style=\"font-size: 50px\">{{$enabled ? '✅' : '\uD83D\uDEAB' }}</p>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                    <div class=\"box-footer\">\n                        {!! csrf_field() !!}\n                        <button type=\"submit\" name=\"_method\" value=\"POST\"  style=\"margin-left: 8px\" class=\"btn btn-sm btn-primary pull-right \">Save</button>\n                        {!! csrf_field() !!}\n                        <button type=\"submit\" name=\"_method\" value=\"DELETE\" class=\"btn btn-sm btn-danger pull-right \">Remove License</button>\n\n                </form>\n            </div>\n\n            </div>\n        </div>\n    </div>\n@endsection\n</p>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                    <div class=\"box-footer\">\n                        {!! csrf_field() !!}\n                        <button type=\"submit\" name=\"_method\" value=\"PATCH\" class=\"btn btn-sm btn-primary pull-right\">Save</button>\n                    </div>\n                </form>\n            </div>\n        </div>\n    </div>\n@endsection\n"
+    }
+  ],
+  "./resources/views/admin/bagoulicense/index.blade.php": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "@extends('layouts.admin')\n@include('partials/admin.settings.nav', ['activeTab' => 'basic'])\n\n@section('title')\n    Bagou License\n@endsection\n\n@section('content-header')\n    <h1>Bagou License<small>Configure license for Bagou450 Addons.</small></h1>\n    <ol class=\"breadcrumb\">\n        <li><a href=\"{{ route('admin.index') }}\">Admin</a></li>\n        <li class=\"active\">Bagou License</li>\n    </ol>\n@endsection\n@section('content')\n@include('admin.bagoulicense.nav', ['addon' => null])\n\n    <div class=\"row\">\n        <div class=\"col-xs-12\">\n            <div class=\"box\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">Bagou License</h3>\n                </div>\n                <p class=\"box-body\">The Bagou450 license system is here for protect against leak/resell.<br/>My addons can`t be used without license! </br>By default a license can be used on only one panel <span style=\"font-weight: 900;\">if you need a license for more panel contact me on discord (there are no fees)</span>.</p>\n            </div>\n        </div>\n    </div>\n@endsection\n"
+    }
+  ],
+  "./resources/views/layouts/admin.blade.php": [
+      {
+      "type": "above",
+      "theme": "any",
+      "where": "<li class=\"header\">MANAGEMENT</li>",
+      "add": "                        <li class=\"{{ ! starts_with(Route::currentRouteName(), 'admin.bagoulicense') ?: 'active' }}\">\n                            <a href=\"{{ route('admin.bagoulicense')}}\">\n                                <i class=\"fa fa-paint-brush\"></i> <span>Theme Settings</span>\n                            </a>\n                        </li>"
+    }
+  ],
+    "./resources/scripts/api/server/version/getVersionFileSize.ts": [
+    {
+      "type": "newfile",
+      "theme": "any",
+      "add": "import http from '@/api/http';\n\nexport default async (uuid: string, filename: string): Promise<any> => {\n  return new Promise((resolve, reject) => {\n    http\n      .get(`/api/client/servers/${uuid}/versions/getversionsize`, { params: { filename } })\n      .then((data) => resolve(data.data))\n      .catch(reject);\n  });\n};\n"
+    }
+  ]
+}
