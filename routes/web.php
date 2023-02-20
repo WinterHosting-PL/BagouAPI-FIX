@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+Route::prefix('web')->group(function () {
+    Route::prefix('auth')->group(function () {
+        Route::post('/login', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'login'])->name('login');
+        Route::post('/register', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'register']);
+        Route::post('/logout', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'logout']);
+
+    });
+    Route::group(['prefix' => 'dashboard', 'middleware' => ['auth']], function () {
+        Route::get('/', [App\Http\Controllers\Api\Client\Web\Dashboard\DashboardController::class, 'dashboard']);
+    });
+    Route::prefix('license')->group(function () {
+        Route::post('/get', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'get']);
+    });
 });

@@ -1,0 +1,75 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2023-01-22T11:49:11+01:00",
+    "name": "FTB modpacks installation",
+    "author": "contact@bagou450.com",
+    "description": "Install ftb modpacks.\r\n\r\nUSED BY MODPACKS INSTALLER DO NOT REMOVE",
+    "features": null,
+    "docker_images": {
+        "Java 17": "ghcr.io\/pterodactyl\/yolks:java_17",
+        "Java 16": "ghcr.io\/pterodactyl\/yolks:java_16",
+        "Java 11": "ghcr.io\/pterodactyl\/yolks:java_11",
+        "Java 8": "ghcr.io\/pterodactyl\/yolks:java_8"
+    },
+    "file_denylist": [],
+    "startup": "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true $( [[  ! -f unix_args.txt ]] && printf %s \"-jar {{SERVER_JARFILE}}\" || printf %s \"@unix_args.txt\" )",
+    "config": {
+        "files": "{\r\n    \"server.properties\": {\r\n        \"parser\": \"properties\",\r\n        \"find\": {\r\n            \"server-ip\": \"0.0.0.0\",\r\n            \"server-port\": \"{{server.build.default.port}}\",\r\n            \"query.port\": \"{{server.build.default.port}}\"\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \")! For help, type \"\r\n}",
+        "logs": "{}",
+        "stop": "stop"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\r\n#\r\n# Server Files: \/mnt\/server\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\nrm -rf *\r\necho -e \"Install requirement...\"\r\napt update\r\napt install -y curl\r\necho -e \"Download modpack installer...\"\r\ncurl -o .\/server_${MODPACK_ID}_${MODPACK_VERSION} \"https:\/\/api.modpacks.ch\/public\/modpack\/${MODPACK_ID}\/${MODPACK_VERSION}\/server\/linux\"\r\necho -e \"Set installer permissions...\"\r\nchmod +x .\/server_${MODPACK_ID}_${MODPACK_VERSION}\r\necho -e \"Run installer...\"\r\n.\/server_${MODPACK_ID}_${MODPACK_VERSION} --nojava --auto\r\necho -e \"Rename Files...\"\r\nfunction  unix_args {\r\n  echo -e \"Detected Forge 1.17 or newer version. Setting up forge unix args.\"\r\n  ln -sf libraries\/net\/minecraftforge\/forge\/*\/unix_args.txt unix_args.txt\r\n}\r\nif [[ ${MC_VERSION} -gt 16 ]]\r\nthen\r\n   echo -e \"\"\r\n   find .\/ -maxdepth 1 -name 'forge*' -exec java -jar {} --installServer \\;\r\n   unix_args\r\n   find .\/ -maxdepth 1 -name 'forge*' -exec rm {} \\;\r\n   rm run.bat run.sh start.sh\r\n\r\nelse\r\n   find .\/ -maxdepth 1 -name 'forge*' -exec mv {} .\/server.jar \\;\r\nfi\r\necho -e \"Remove installer...\"\r\nrm .\/server_${MODPACK_ID}_${MODPACK_VERSION}\r\n\r\necho -e \"Installation complete!\"",
+            "container": "openjdk:8-jdk-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Modpack ID",
+            "description": "ID of the modpack",
+            "env_variable": "MODPACK_ID",
+            "default_value": "",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|int",
+            "field_type": "text"
+        },
+        {
+            "name": "Modpack Version",
+            "description": "Version id of the modpack",
+            "env_variable": "MODPACK_VERSION",
+            "default_value": "",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|int",
+            "field_type": "text"
+        },
+        {
+            "name": "McVersion",
+            "description": "McVersion",
+            "env_variable": "MC_VERSION",
+            "default_value": "",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|int|max:99",
+            "field_type": "text"
+        },
+        {
+            "name": "Server Jar File",
+            "description": "The name of the Jarfile to use when running Forge version below 1.17.",
+            "env_variable": "SERVER_JARFILE",
+            "default_value": "server.jar",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|regex:\/^([\\w\\d._-]+)(\\.jar)$\/",
+            "field_type": "text"
+        }
+    ]
+}

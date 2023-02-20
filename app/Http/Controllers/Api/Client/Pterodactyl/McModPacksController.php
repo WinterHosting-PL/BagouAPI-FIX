@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Http;
 use App\Models\License;
 use App\Models\ModPacksResult;
 use App\Models\ModsVersionsResult;
+use App\Models\ModPacksDownloadLinks;
 use Config;
 use Weidner\Goutte\GoutteFacade;
+use Illuminate\Support\Facades\Redirect;
 
 class McModPacksController extends BaseController
 {
@@ -92,10 +94,10 @@ class McModPacksController extends BaseController
             if(!$request->game_versions) {
                 $request->game_versions = false;
             }
-            /*$data = ModPacksResult::where(['page' => $request->page, 'type' => $request->type])->first();
+          /* $data = ModPacksResult::where(['page' => $request->page, 'type' => $request->type])->first();
             if($data && $request->search == '' && !$request->game_versions) {
                 if($data->updated_at->diffInHours(now())<24) {
-                    return $data->result;
+                    return json_decode($data->result, true);
                 }
             }*/
             
@@ -134,7 +136,7 @@ class McModPacksController extends BaseController
                 $tmplist = array_slice($tmplist->packs, $request->page*20-20, 20);
                 $modpackslist = array();
                 foreach($tmplist as $modpack) {
-                    $modpackget = Http::accept('application/json')->withHeaders($headers)->get("https://api.modpacks.ch/public/modpack/$modpack")->object();  
+                    $modpackget = Http::accept('application/json')->withHeaders($headers)->get("https://api.modpacks.ch/public/modpack/$modpack")->object(); 
                     $versions = array();    
                     $loader = '';
                     if(isset($modpackget->versions)) {
@@ -148,22 +150,35 @@ class McModPacksController extends BaseController
                                         array_push($versions, $version->version);
                                     }
                                 }
-                            }
+                            }   
                         }
                     }       
+                    $tags = array();
+                    if(isset($modpackget->tags)) {
+                        foreach($modpackget->tags as $tag) {
+                            array_push($tags, $tag->name);
+                        }
+                    }
+                    if(!isset($modpackget->versions)) {
+                        continue;
+                    }
+                    $versionid = $modpackget->versions[0]->id;
                     if(isset(($modpackget->name))) {
                         array_push($modpackslist, [
                             'name' => $modpackget->name,
-                            'smalldesc' => isset($modpackget->synopsis) ? $modpackget->synopsis : '',
+                            'summary' => isset($modpackget->synopsis) ? $modpackget->synopsis : '',
                             'description' => isset($modpackget->description) ? $modpackget->description : '',
-                            'icon' => isset($modpackget->art) ? $modpackget->art[0]->url : '',
+                            'logo' => array('thumbnailUrl' => isset($modpackget->art) ? $modpackget->art[0]->url : ''),
                             'author' => isset($modpackget->authors) ? $modpackget->authors[0]->name : '',
                             'versions' => $versions,
+                            'downloadlink' => "https://api.modpacks.ch/public/modpack/$modpackget->id/$versionid/server/linux",
+                            'versionid' => $versionid,
                             'loader' => $loader,
                             'installations' => isset($modpackget->installs) ? $modpackget->installs : '',
                             'plays' => isset($modpackget->plays) ? $modpackget->plays : '',
-                            'tags' => isset($modpackget->tags) ? $modpackget->tags : '',
+                            'display_categories' => $tags,
                             'id' => isset($modpackget->id) ? $modpackget->id : '',
+                            'link' => isset($modpackget->id) ? "https://www.feed-the-beast.com/modpacks/" . $modpackget->id : '',
                         ]);
                     }       
                     
@@ -187,7 +202,7 @@ class McModPacksController extends BaseController
                     $modpackslist = $tmplist;
                 }
             } else if ($request->type == 'technicpack') {
-                $url = "https://www.technicpack.net/modpacks?&q=$request->search&page=$request->page";
+                $url = "https://www.technicpack.net/modpacks/sort-by/popular?&q=$request->search&page=$request->page";
                 $modpacksscrap = GoutteFacade::request('GET', $url); 
                 //dd($versionslist);
                 global $modpackslist;
@@ -198,10 +213,8 @@ class McModPacksController extends BaseController
                 $lastbuild = Http::get('http://api.technicpack.net/launcher/version/stable4')->object()->build;
                 $modpacksscrap->filter("div.modpack-item")->each(function ($item) {
                     global $link;
-                    global $icon;
                     global $downloadcount;
                     $link = '';
-                    $icon = '';
                     $downloadcount = '';
                     $item->filter("div.modpack-image > a")->each(function ($item_link) {
                         global $link;
@@ -226,7 +239,6 @@ class McModPacksController extends BaseController
                     $downloadlink = "https://api.technicpack.net/modpack/" . $str . "?build=$lastbuild";
                     array_push($tmpmodpacks, array(
                     'link' => $link, 
-                    'icon' => $icon,
                     'downloadcount' => $downloadcount,
                     'downloadlink' => $downloadlink,
                     ));
@@ -236,14 +248,23 @@ class McModPacksController extends BaseController
                     $modpacksscrap = GoutteFacade::request('GET', $modpack['link']); 
                     global $name;
                     global $versions;
+                    global $description;
                     global $author;
+                    global $icon;
                     $name = '';
+                    $description = '';
                     $versions = '';
                     $author = '';
+                    $icon = '';
+                    
                     $modpacksscrap->filter("div.modpack-title")->each(function ($item) {
                         $item->filter("h1")->each(function ($item_name) {
                             global $name;
                             $name = $item_name->text();
+                            $item_name->filter("img")->each(function ($item_icon) {
+                                global $icon;
+                                $icon = $item_icon->attr('src');
+                            });
                         });
                         
                         $item->filter("div.modpack-meta")->each(function ($item_versions) {
@@ -261,13 +282,33 @@ class McModPacksController extends BaseController
                             });
                         });
                     });
+                    $modpacksscrap->filter('div.modpack-overview-content')->each(function ($item) {
+                        global $description;
+                        $description = $item->html();
+                        
+                    });
+                    $downloadlink = ModPacksDownloadLinks::where('link', '=', $modpack['link'])->where('type', '=', 'technicpack')->first();
+                    if($downloadlink || $downloadlink !== null) {
+                        $modpack['downloadlink'] = $downloadlink->downloadlink;
+                    } 
+                    if(str_starts_with($modpack['downloadlink'], 'https://api.technicpack.net')) {
+                        $data = Http::get($modpack['downloadlink'])->object();
+                        if(isset($data->serverPackUrl)) {
+                            if($data->serverPackUrl && $data->serverPackUrl !== null) {
+                                $modpack['downloadlink'] = $data->serverPackUrl;
+                            }
+                        }
+                       
+                    }
                     global $modpackslist;
+                    if(!str_starts_with($modpack['downloadlink'], 'https://api.technicpack.net'))
                     array_push($modpackslist, array(
                         'name' => $name,
                         'versions' => [$versions],
                         'author' => $author,
                         'link' => $modpack['link'], 
-                        'icon' => $modpack['icon'],
+                        'description' => $description,
+                        'logo' => array('thumbnailUrl' => $icon),
                         'downloadcount' => $modpack['downloadcount'],
                         'downloadlink' => $modpack['downloadlink'],
                        
@@ -306,32 +347,41 @@ class McModPacksController extends BaseController
                     array_push($tmppack, array(
                         'name' => $name,
                         'versions' => $versions,
-                        'icon' => $icon,
+                        'logo' => $icon,
                         'link' => $link
                     ));
                 });
                 global $modpackslist; 
                 $modpackslist = array();
                 foreach($tmppack as $modpack) {
-                    $url = $modpack['link'];
-                    $modpacksscrap = GoutteFacade::request('GET', $url);
-                    global $downloadlink;
-                    $downloadlink = '';
-                    $modpacksscrap->filter("a.more-details-installer")->each(function ($item) {
-                        if($item->text() == 'Download the Server Pack') {
-                            global $downloadlink;
-                            $downloadlink = $item->attr('href');
-                        }
-                    });
-                    $modpack['downloadlink'] = $downloadlink;
-                    array_push($modpackslist, array(
-                        'name' => $modpack['name'],
-                        'versions' => $modpack['versions'],
-                        'icon' => $modpack['icon'],
-                        'link' => $modpack['link'],
-                        'downloadlink' => $modpack['downloadlink']
-                    ));
-
+                    if(str_contains(strtolower($modpack['name']), $request->search)) {
+                        $url = $modpack['link'];
+                        $modpacksscrap = GoutteFacade::request('GET', $url);
+                        global $downloadlink;
+                        $downloadlink = '';
+                        global $description;
+                        $description;
+                        $modpacksscrap->filter("a.more-details-installer")->each(function ($item) {
+                            if($item->text() == 'Download the Server Pack') {
+                                global $downloadlink;
+                                $downloadlink = $item->attr('href');
+                            }
+                        });
+                        $modpacksscrap->filter("div.post-server-content")->each(function ($item) {
+                            global $description;
+                            $description = $item->html();
+                        });
+                        $modpack['downloadlink'] = $downloadlink;
+                        array_push($modpackslist, array(
+                            'name' => $modpack['name'],
+                            'description' => $description,
+                            'versions' => $modpack['versions'],
+                            'logo' => array('thumbnailUrl' => $modpack['logo']),
+                            'link' => $modpack['link'],
+                            'downloadlink' => $modpack['downloadlink']
+                        ));
+    
+                    } 
                 }
              } else {
                 return response()->json([
@@ -389,16 +439,17 @@ class McModPacksController extends BaseController
             return $license;
         };
     }
-    public function getMcModsDescription(Request $request) {
-        $license = $this->checkLicense($request);
-        if($license->getStatusCode() === 200) {
+    public function getMcModpacksDescription(Request $request) {
+       // $license = $this->checkLicense($request);
+       // if($license->getStatusCode() === 200) {
+        if(true) {
             $cursekey = config('api.cursekey');
             if($request->type == 'curseforge') {
                 $headers = ['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.81 Safari/537.36', 'x-api-key' => $cursekey];
-                $addons = Http::accept('application/json')->withHeaders($headers)->get("https://api.curseforge.com/v1/mods/$request->modId/description")
+                $addons = Http::accept('application/json')->withHeaders($headers)->get("https://api.curseforge.com/v1/mods/$request->modpackId/description")
                     ->object()->data;
             } else if ($request->type == 'modrinth') {
-                $addons = Http::accept('application/json')->get("https://api.modrinth.com/v2/project/$request->modId")
+                $addons = Http::accept('application/json')->get("https://api.modrinth.com/v2/project/$request->modpackId")
                 ->object()->body;
 
                 $regex_images = '~https?://\S+?(?:png|gif|jpe?g)~';
@@ -423,8 +474,9 @@ class McModPacksController extends BaseController
         };
     }
     public function getMcVersions(Request $request) {
-        $license = $this->checkLicense($request);
-        if($license->getStatusCode() === 200) {
+        //$license = $this->checkLicense($request);
+        //if($license->getStatusCode() === 200) {
+            if(true) {
         $versions = Http::get('https://launchermeta.mojang.com/mc/game/version_manifest.json')->json();
         $releases = array();
         foreach($versions['versions'] as $version) {
@@ -437,6 +489,113 @@ class McModPacksController extends BaseController
         return $license;
     };
     }
+    public function download(Request $request) {
+        //$license = $this->checkLicense($request);
+        //if($license->getStatusCode() === 200) {
+        if(true) {
+            if($request->type == 'voidswrath') {
+                return response()->json([
+                    'message' => 'Good',
+                    'data' => $request->data,
+                    'size' => get_headers($request->data, true)['Content-Length'],
+                ], 200);
+            } else if($request->type == 'curseforge') {
+                $cursekey = config('api.cursekey');
+                $headers = ['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.81 Safari/537.36', 'x-api-key' => $cursekey];
+                $modpackid = $request->modpackid;
+                $modpackserverfileid = null;
+                $versionslist = Http::accept('application/json')->withHeaders($headers)->get("https://api.curseforge.com/v1/mods/$modpackid/files?pageSize=10")->object()->data;
+                $nb = 0;
+                while ($modpackserverfileid == null) {
+                    if(sizeof($versionslist) == $nb) {
+                        return response()->json([
+                            'message' => 'Error',
+                            'data' => 'Can\'t found a download url for this Modpack.'
+                        ], 500); 
+                    }
+                    if(isset($versionslist[$nb]->serverPackFileId)) {
 
+                        $modpackserverfileid = $versionslist[$nb]->serverPackFileId;
+                        $mcversion = null;
+                        $loader = null;
+                        foreach($versionslist[$nb]->gameVersions as $version) {
+                            if($version !== 'Forge' && $version !== 'Fabric') {
+                                $mcversion = $version;
+                            } else {
+                                $loader = $version;
+                            }
+                        }
+                    } else {
+                        $nb++;
+                    }
+                    
+                }
+                $modpackdata = Http::accept('application/json')->withHeaders($headers)->get("https://api.curseforge.com/v1/mods/$modpackid/files/$modpackserverfileid")
+                    ->object()->data->downloadUrl;
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $modpackdata);
+                curl_setopt($ch, CURLOPT_HEADER, true);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $modpackdata = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL); // This is what you need, it will return you the last effective URL
+
+                return response()->json([
+                    'message' => 'Good',
+                    'data' => $modpackdata,
+                    'mcversion' => $mcversion,
+                    'loader' => $loader,
+                    'size' => get_headers($modpackdata, true)['Content-Length'][1],
+                ], 200);
+            } else if($request->type == 'modrinth') {
+                return response()->json([
+                    'message' => 'Error',
+                    'data' => $request->modpackid
+                ], 500); 
+            }
+        }
+    }
+
+    public function getEgg(Request $request) {
+            //$license = $this->checkLicense($request);
+            //if($license->getStatusCode() === 200) {
+            if(true) {
+                return json_decode(file_get_contents("../modpacksegg/$request->type.json"), true);
+            } else {
+                return $license;
+            };
+    }
+
+    public function forgeDownload(Request $request) {
+        //$license = $this->checkLicense($request);
+        //if($license->getStatusCode() === 200) {
+        if(true) {
+            $forgeversions = Http::get('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json')->json();
+            if(isset($forgeversions['promos'][$request->version . '-latest'])) {
+                $forgeversion = $forgeversions['promos'][$request->version . '-latest'];
+                return Redirect::to("https://maven.minecraftforge.net/net/minecraftforge/forge/$request->version-$forgeversion/forge-$request->version-$forgeversion-installer.jar");
+            } else {
+                      return response()->json([
+                    'message' => 'Invalid request.'
+                ], 400);
+            }
+        } else {
+            return $license;
+        };
+}
+public function fabricDownload(Request $request) {
+    //$license = $this->checkLicense($request);
+    //if($license->getStatusCode() === 200) {
+    if(true) {
+        $fabricversion = Http::get('https://meta.fabricmc.net/v2/versions/installer')->json();
+        foreach($fabricversion as $version) {
+            if($version['stable']) {
+                $versionnb = $version['version'];
+                return Redirect::to("https://maven.fabricmc.net/net/fabricmc/fabric-installer/$versionnb/fabric-installer-$versionnb.jar");
+            }
+        }
+    } else {
+        return $license;
+    };
+}
 }
 
