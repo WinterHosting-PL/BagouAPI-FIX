@@ -7,6 +7,33 @@
       <sourceFolder url="file://$MODULE_DIR$/database/seeders" isTestSource="false" packagePrefix="Database\Seeders\" />
       <sourceFolder url="file://$MODULE_DIR$/spec" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" packagePrefix="Tests\" />
+      <sourceFolder url="file://$MODULE_DIR$/public/pma/libraries/classes" isTestSource="false" packagePrefix="PhpMyAdmin\" />
+      <sourceFolder url="file://$MODULE_DIR$/public/pma/test/classes" isTestSource="true" packagePrefix="PhpMyAdmin\Tests\" />
+      <sourceFolder url="file://$MODULE_DIR$/public/pma/test/selenium" isTestSource="true" packagePrefix="PhpMyAdmin\Tests\Selenium\" />
+      <sourceFolder url="file://$MODULE_DIR$/public/pma/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/css-selector/" isTestSource="false" packagePrefix="Symfony\Component\CssSelector\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/error-handler/" isTestSource="false" packagePrefix="Symfony\Component\ErrorHandler\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/event-dispatcher-contracts/" isTestSource="false" packagePrefix="Symfony\Contracts\EventDispatcher\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/event-dispatcher/" isTestSource="false" packagePrefix="Symfony\Component\EventDispatcher\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/finder/" isTestSource="false" packagePrefix="Symfony\Component\Finder\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/http-foundation/" isTestSource="false" packagePrefix="Symfony\Component\HttpFoundation\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/http-kernel/" isTestSource="false" packagePrefix="Symfony\Component\HttpKernel\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/mailer/" isTestSource="false" packagePrefix="Symfony\Component\Mailer\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/mime/" isTestSource="false" packagePrefix="Symfony\Component\Mime\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-ctype/" isTestSource="false" packagePrefix="Symfony\Polyfill\Ctype\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-intl-grapheme/" isTestSource="false" packagePrefix="Symfony\Polyfill\Intl\Grapheme\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-intl-idn/" isTestSource="false" packagePrefix="Symfony\Polyfill\Intl\Idn\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-intl-normalizer/" isTestSource="false" packagePrefix="Symfony\Polyfill\Intl\Normalizer\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-mbstring/" isTestSource="false" packagePrefix="Symfony\Polyfill\Mbstring\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-php72/" isTestSource="false" packagePrefix="Symfony\Polyfill\Php72\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-php80/" isTestSource="false" packagePrefix="Symfony\Polyfill\Php80\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/polyfill-uuid/" isTestSource="false" packagePrefix="Symfony\Polyfill\Uuid\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/process/" isTestSource="false" packagePrefix="Symfony\Component\Process\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/routing/" isTestSource="false" packagePrefix="Symfony\Component\Routing\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/service-contracts/" isTestSource="false" packagePrefix="Symfony\Contracts\Service\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/string/" isTestSource="false" packagePrefix="Symfony\Component\String\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/uid/" isTestSource="false" packagePrefix="Symfony\Component\Uid\" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor_back/symfony/var-dumper/" isTestSource="false" packagePrefix="Symfony\Component\VarDumper\" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/fakerphp/faker" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/deprecation-contracts" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/filp/whoops" />
@@ -164,6 +191,7 @@
       <excludeFolder url="file://$MODULE_DIR$/public/pma/vendor/webmozart/assert" />
       <excludeFolder url="file://$MODULE_DIR$/public/pma/vendor/williamdes/mariadb-mysql-kbs" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/fruitcake/laravel-cors" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/league/iso3166" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

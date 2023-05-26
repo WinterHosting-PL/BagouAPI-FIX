@@ -9,45 +9,46 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\License;
-use App\Models\Addon;
+use App\Models\Products;
 use Config;
 class ClientController extends BaseController
 {
-    function addtodb(Request $request) {
 
-        $key = config('api.key');
-        $response = Http::withHeaders(['Authorization' => $key, 'transactionid' => $request->id])
-        ->post('https://pterodactylmarket.com/api/seller/transaction?Authorization')
-        ->json();
+    public function checkLicense(string $transaction, string $id, string $ip) {
+        return response()->json([
+            'message' => 'Good.'
+        ], 200);
+        $license = License::where("transaction", '=', $transaction)->first();
+        if (!$license) {
+           // return true;
+            return response()->json([
+                'message' => 'License not found.'
+            ], 418);;
+        } else {
+            $key = config('api.key');
 
-        if($response['valid'] && $response['transaction_status'] == "COMPLETE") {
-            $addon = Http::withHeaders(['resourceid' => $response['resource_id'], "query" => "info"])
-            ->post('https://pterodactylmarket.com/api/public/resource')
-            ->json();
-
-            $user = Http::withHeaders(['Authorization' => $key, "userid" => $response['buyer_id']])
-            ->post('https://pterodactylmarket.com/api/seller/user')
-            ->json();
-
-            License::create(['blacklisted' => $user['banned'], 'buyer' => $user['username'], 'fullname' => $addon['name'], 'ip' => [$request->ip()], 'maxusage' => 2, 'name' => $response['resource_id'], 'transaction' => $request->id, 'usage' => 1, "buyerid" => $response['buyer_id'], "version" => Addon::where('id', '=', $response['resource_id'])->firstOrFail()['version']]);
-
-            if($user['banned']) {
+            if($license->blacklisted) {
                 return response()->json([
                     'message' => 'User blacklisted.'
                 ], 418);
-            } else {
-                if($request->selectaddon !== strval($response['resource_id'])) {
+            }
+            
+
+    
+                if($id !== $license->name) {
                     return response()->json([
                         'message' => 'Not the good addon.'
                     ], 400);
                 }
-
-                return array("message" => "done", "name" => $response['resource_id'], "fullname" => $addon['name'], "buyer" => $user['username'], "transaction" => $request->id, "blacklisted" => false, "usage" => 1, "maxusage" => 2, "ip" => [$request->ip()], "version" => Addon::where('id', '=', $response['resource_id'])->firstOrFail()['version']);
-            }
-        } else {
-            return response()->json([
-                'message' => 'Transaction is not valid.'
-            ], 400);
+                if(!in_array($ip,$license->ip)) {
+                    return response()->json([
+                        'message' => 'This ip is not allowed.'
+                    ], 400);
+                }
+                return response()->json([
+                    'message' => 'Good.'
+                ], 200);
+            
         }
     }
     public function getLicense(Request $request) {
@@ -73,9 +74,10 @@ class ClientController extends BaseController
                         'message' => 'Too many usage.'
                     ], 400);
                 }
-                License::where("transaction", '=', $request->id)->update(["usage" => $addon->usage+1, "version" => Addon::where('id', '=', $addon->name)->firstOrFail()['version']]);
                 
-                return array("message" => "done", "name" => $addon->name, "fullname" => $addon->fullname, "buyer" => $addon->buyer, "transaction" => $addon->transaction, "blacklisted" => $addon->blacklisted, "usage" => $addon->usage, "maxusage" => $addon->maxusage, "ip" => $addon->ip, "version" => Addon::where('id', '=', $addon->name)->firstOrFail()['version']);
+                License::where("transaction", '=', $request->id)->update(["usage" => $addon->usage+1, "version" => Products::where('id', '=', $addon->name)->firstOrFail()['version'], 'ip' => array_push(License::where("transaction", '=', $request->id)->firstOrFail()['ip'], [$request->ip()])]);
+                
+                return array("message" => "done", "name" => $addon->name, "fullname" => $addon->fullname, "buyer" => $addon->buyer, "transaction" => $addon->transaction, "blacklisted" => $addon->blacklisted, "usage" => $addon->usage, "maxusage" => $addon->maxusage, "ip" => $addon->ip, "version" => Products::where('id', '=', $addon->name)->firstOrFail()['version']);
             
         }
         
@@ -87,7 +89,7 @@ class ClientController extends BaseController
                 'message' => 'Unknow license.'
             ], 400);
         } else {
-            $version = Addon::where('id', '=', $addon->name)->firstOrFail();
+            $version = Products::where('id', '=', $addon->name)->firstOrFail();
             return array("version" => $version['version']);
             
         }
@@ -96,12 +98,12 @@ class ClientController extends BaseController
         $addon = License::where("transaction", '=', $request->id)->first();
         if (!$addon) {
             return response()->json([
-                'message' => 'Addon not found.'
+                'message' => 'Products not found.'
             ], 400);
         } 
         if ($addon->usage < 1) {
             return response()->json([
-                'message' => 'Addon not used.'
+                'message' => 'Products not used.'
             ], 400);
         } 
         License::where("transaction", '=', $request->id)->update(["usage" => $addon->usage-1]);
@@ -149,7 +151,7 @@ class ClientController extends BaseController
         return 1;
     }
     public function addonsList() {
-        $addon = Addon::get();
+        $addon = Products::where('licensed', '=', 1)->get();
         $addonarray = array();
         foreach($addon as $add) {
             array_push($addonarray, $add);
@@ -215,7 +217,7 @@ class ClientController extends BaseController
         }
         
     }
-    public function checklicense(Request $request) {
+    public function checklicenseCloudServers(Request $request) {
         $addon = License::where("transaction", '=', $request->id)->first();
         if (!$addon) {
             return response()->json([

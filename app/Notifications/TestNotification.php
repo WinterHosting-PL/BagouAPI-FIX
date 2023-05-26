@@ -43,7 +43,7 @@ class TestNotification extends Notification
         $username = reset($notifiable->routes['mail']);
         return (new MailMessage)
             ->greeting("Hello $username!")
-            ->markdown('emails.custom-markdown')
+            ->markdown('emails.license')
             ->subject('Bagou450 Licensing System - New License usage')
             ->line('Your license has been used one more time!')
             ->line('If you didn\'t use the license contact me immediately!')

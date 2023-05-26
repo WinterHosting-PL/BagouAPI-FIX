@@ -22,7 +22,7 @@ class Handler extends ExceptionHandler
      * @var array<int, class-string<\Throwable>>
      */
     protected $dontReport = [
-        //
+        \League\OAuth2\Server\Exception\OAuthServerException::class
     ];
 
     /**

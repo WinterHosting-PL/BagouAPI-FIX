@@ -207,6 +207,7 @@ return [
     | the aliases are "lazy" loaded so they don't hinder performance.
     |
     */
+    'molliekey' => env('MOLLIEKEY', null),
 
     'aliases' => Facade::defaultAliases()->merge([
        

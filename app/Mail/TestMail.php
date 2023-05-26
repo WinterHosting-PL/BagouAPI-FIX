@@ -33,6 +33,6 @@ class TestMail extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.custom-markdown')->subject('Bagou450 Shop - Your licenses');
+        return $this->view('emails.license')->subject('Bagou450 - Your licenses');
     }
 }

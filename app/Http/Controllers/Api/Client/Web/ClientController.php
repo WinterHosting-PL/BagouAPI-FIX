@@ -15,11 +15,10 @@ use Notification;
 use Illuminate\Support\Facades\Mail;
 class ClientController extends BaseController
 {
-    public function TestEmail() {
-        Mail::to('bagou450roro@gmail.com')
-            ->send(new TestMail('Bagou450 Team'));
-        return 'Good';
+    public function getcrsf() {
+       
+        return csrf_token();
     }
-
+    
 }
 

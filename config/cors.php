@@ -15,11 +15,11 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'api'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'api', 'web/*', '*'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => ['https://privatewebsite.bagou450.com'],
 
     'allowed_origins_patterns' => [],
 

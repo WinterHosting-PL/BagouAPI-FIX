@@ -16,6 +16,9 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->call(function () {
+            (new \App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController)->updatestatus();
+        })->everyMinute();
     }
 
     /**

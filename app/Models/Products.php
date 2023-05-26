@@ -20,13 +20,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Carbon\Carbon $updated_at
  * @property string $hashid
  */
-class Addon extends Model
+class Products extends Model
 {
     /**
      * The resource name for this model when it is transformed into an
      * API representation using fractal.
      */
-    public const RESOURCE_NAME = 'addon';
+    public const RESOURCE_NAME = 'products';
 
 
     /**
@@ -34,7 +34,7 @@ class Addon extends Model
      *
      * @var string
      */
-    protected $table = 'addon';
+    protected $table = 'products';
 
 
     /**
@@ -49,9 +49,14 @@ class Addon extends Model
         'tabroute',
         'new',
         'version',
-        'sxcname'
+        'sxcname',
+        'licensed',
+        'bbb_id',
+        'tag',
+        'description',
+        'link',
+        'price'
     ];
-
     /**
      * Cast values to correct type.
      *
@@ -64,6 +69,12 @@ class Addon extends Model
         'tabroute' => 'string',
         'new' => 'boolean',
         'version' => 'float',
-        "sxcname" => 'string'
+        "sxcname" => 'string',
+        'licensed' => 'boolean',
+        'bbb_id' => 'integer',
+        'tag' => 'string',
+        'description' => 'string',
+        'link' => 'json',
+        'price' => 'float'
     ];
 }
