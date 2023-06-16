@@ -19,8 +19,11 @@ class Ticket extends Model
         'license',
         'user_id',
         'logs_url',
+        'discord_id',
+        'discord_user_id',
         'name'
     ];
+
     public function messages()
     {
         return $this->hasMany(TicketMessage::class);

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attachment extends Model
 {
-    protected $table = 'attachments';
+    protected $table = 'ticket_attachments';
 
     public function ticket()
     {

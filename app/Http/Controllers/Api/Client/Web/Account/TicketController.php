@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketCreatedMail;
 use App\Mail\TicketStatusUpdatedMail;
 use App\Mail\TicketMessageAddedMail;
+use Illuminate\Support\Facades\Config;
 
 class TicketController extends Controller
 {
@@ -26,6 +28,7 @@ class TicketController extends Controller
             'logs_url' => 'required|string',
             'message' => 'required|string|max:4000',
             'license' => 'required|string',
+            'discord_id' => 'nullable|string',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:2048' // Extensions autorisées et taille maximale de 2MB par fichier
         ]);
@@ -35,22 +38,34 @@ class TicketController extends Controller
         }
 
         $user = auth('sanctum')->user();
-        if (!$user) {
+        if (!$user && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r"))  {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
 
         $ticket = new Ticket();
         $ticket->name = $request->subject;
         $ticket->logs_url = $request->logs_url;
-        $ticket->user_id = $user->id;
         $ticket->license = $request->license;
         $ticket->status = 'client_answer';
         $ticket->priority = 'normal';
+        if($request->discord_id && $request->discord_user_id) {
+            $ticket->discord_id = $request->discord_id;
+            $ticket->discord_user_id = $request->discord_user_id;
+
+        } else {
+            $ticket->user_id = $user->id;
+        }
         $ticket->save();
 
         $message = new TicketMessage();
         $message->ticket_id = $ticket->id;
-        $message->user_id = $user->id;
+        if($request->discord_id && $request->discord_user_id) {
+            $message->discord_id = $request->discord_id;
+            $message->discord_user_id = $request->discord_user_id;
+
+        } else {
+            $message->user_id = $user->id;
+        }
         $message->content = $request->message;
         $message->position = 1;
         $message->save();
@@ -59,7 +74,13 @@ class TicketController extends Controller
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $attachmentFile) {
                 $attachment = new Attachment();
-                $attachment->user_id = $user->id;
+                if($request->discord_id && $request->discord_user_id) {
+                    $attachment->discord_id = $request->discord_id;
+                    $attachment->discord_user_id = $request->discord_user_id;
+
+                } else {
+                    $attachment->user_id = $user->id;
+                }
                 $attachment->ticket_id = $ticket->id;
                 $attachment->name = $attachmentFile->getClientOriginalName();
                 $attachment->size = $attachmentFile->getSize();
@@ -90,10 +111,10 @@ class TicketController extends Controller
 
         $ticket = Ticket::findOrFail($ticket);
         $user = auth('sanctum')->user();
-        if (!$user) {
+        if (!$user && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
-        if ($user->id !== $ticket->user_id && $user->role !== 1) {
+        if ($user->id !== $ticket->user_id && $user->role !== 1 && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
         $ticket->status = $request->status;
@@ -119,43 +140,88 @@ class TicketController extends Controller
         }
         $ticket = Ticket::findOrFail($ticket);
         $user = auth('sanctum')->user();
-        if (!$user) {
+        if (!$user && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
-        if ($user->id !== $ticket->user_id && $user->role !== 1) {
+        if ($user->id !== $ticket->user_id && $user->role !== 1 && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
         $message = new TicketMessage();
         $message->ticket_id = $ticket->id;
-        $message->user_id = $user->id;
+        if($request->discord_id && $request->discord_user_id) {
+            $message->discord_id = $request->discord_id;
+            $message->discord_user_id = $request->discord_user_id;
+
+        } else {
+            $message->user_id = $user->id;
+        }
         $message->content = $request->message;
         $message->position = $ticket->messages()->count() + 1;
         $message->save();
 
         // Process attachments
+        $attachementlist = array();
         if ($request->file()) {
             foreach ($request->file() as $attachmentFile) {
                 $attachment = new Attachment();
-                $attachment->user_id = $user->id;
+                if($request->discord_id && $request->discord_user_id) {
+                    $attachment->discord_id = $request->discord_id;
+                    $attachment->discord_user_id = $request->discord_user_id;
+
+                } else {
+                    $attachment->user_id = $user->id;
+                }
                 $attachment->ticket_id = $ticket->id;
                 $attachment->name = $attachmentFile->getClientOriginalName();
                 $attachment->size = $attachmentFile->getSize();
                 $attachment->unique_name = Str::random(40); // Generate a unique name for the attachment
                 $attachment->save();
-
+                $attachementlist[] = array(
+                    'name' => $attachmentFile->getClientOriginalName(),
+                    'content' => $attachmentFile->getContent()
+                );
                 $attachmentFile->move(public_path('attachments'), $attachment->unique_name);
             }
         }
-        if($user->role !== 1) {
+        if($user->role !== 1 || $request->bearerToken() === "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" ) {
             $ticket->status = 'client_answer';
         } else {
             $ticket->status = 'support_answer';
         }
         $ticket->save();
         // Send email to user and contact
-        Mail::to($ticket->user->email)->send(new TicketMessageAddedMail($ticket, $message));
+
+
+        if($ticket->discord_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r") {
+            $discordToken = config('services.discord.token');
+            $discordServer = config('services.discord.server');
+
+            $discordEndpoint = "https://discord.com/api/v10/";
+            $hearders = [
+                'Authorization' => "Bot $discordToken"
+            ];
+            $requestDiscord = Http::withHeaders($hearders);
+            foreach($attachementlist as $attachment) {
+                $requestDiscord->attach($attachment['name'], $attachment['content'], $attachment['name']);
+            }
+            $response = $requestDiscord->post($discordEndpoint . 'channels/' . $ticket->discord_id . '/messages', [
+                'content' => 'New message from **' . strtoupper($user->lastname) . ' ' . ucfirst($user->firstname) . "**\n ```" . strval($request->message) . ' ```'
+            ]);
+            //Send pm to the user
+            $requestDiscordUserCreateDm = Http::withHeaders($hearders)->post($discordEndpoint . 'users/@me/channels', [
+                'recipient_id' => $ticket->discord_user_id
+            ])->json();
+            $channelId = $requestDiscordUserCreateDm['id'];
+            Http::withHeaders($hearders)->post($discordEndpoint . 'channels/' . $channelId . '/messages', [
+                'content' => 'New message from **' . strtoupper($user->lastname) . ' ' . ucfirst($user->firstname) . "**\nPlease go on the discord https://discord.com/channels/$discordServer/$ticket->discord_id for see it!"
+            ]);
+
+        } else {
+            Mail::to($ticket->user->email)->send(new TicketMessageAddedMail($ticket, $message));
+        }
         Mail::to('contact@bagou450.com')->send(new TicketMessageAddedMail($ticket, $message));
 
+        // Upload ticket detail to discord
         return response()->json(['status' => 'success']);
     }
 

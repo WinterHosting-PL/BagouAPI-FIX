@@ -13,6 +13,8 @@ class TicketMessage extends Model
     protected $fillable = [
         'ticket_id',
         'user_id',
+        'discord_id',
+        'discord_user_id',
         'position',
         'content'
     ];
