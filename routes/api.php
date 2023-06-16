@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController;
 use App\Http\Controllers\Api\Client\Web\Admin\Products\ProductsController;
+use App\Http\Controllers\Api\Client\Web\Account\TicketController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -27,6 +28,19 @@ Route::prefix('client')->group(function () {
                 Route::post('/', [ProductsController::class, 'createProduct']);
                 Route::put('/{id}', [ProductsController::class, 'updateProduct']);
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
+            });
+        });
+        Route::prefix('tickets')->group(function () {
+            Route::middleware('auth:sanctum')->group(function () {
+                Route::post('/', [TicketController::class, 'createTicket']);
+                Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
+                Route::post('/{id}/messages', [TicketController::class, 'addMessage']);
+                Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
+                Route::get('/', [TicketController::class, 'getTicketList']);
+                Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
+                Route::post('/filter', [TicketController::class, 'filterTickets']);
+                Route::post('/search', [TicketController::class, 'searchTickets']);
+                Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
             });
         });
         Route::prefix('auth')->group(function () {

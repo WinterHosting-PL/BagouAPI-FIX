@@ -17,6 +17,12 @@ class ProductsController extends Controller
      */
     public function listProducts()
     {
+        $user = auth('sanctum')->user();
+
+        if (!$user || $user->role !== 1) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
         $products = Products::all();
 
         return response()->json(['status' => 'success', 'data' => $products]);
@@ -82,6 +88,9 @@ class ProductsController extends Controller
 
         $stripeProduct = $response->json();
         $stripeProductId = $stripeProduct['id'];
+        if($productPrice == 0) {
+            $productPrice +=1;
+        }
 
         // Créer le prix du produit sur Stripe
         $response = Http::withHeaders([
@@ -90,7 +99,7 @@ class ProductsController extends Controller
         ])->post('https://api.stripe.com/v1/prices', [
             'product' => $stripeProductId,
             'unit_amount' => $productPrice * 100, // Le prix est en centimes
-            'currency' => 'usd',
+            'currency' => 'eur',
         ]);
 
         if ($response->failed()) {
@@ -119,7 +128,7 @@ class ProductsController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'done', 'data' => $product], 202);
     }
--
+
     /**
      * Modifier un produit.
      *
@@ -154,6 +163,7 @@ class ProductsController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'Product updated', 'data' => $product]);
     }
+
     /**
      * Synchronise les produits avec Stripe.
      *
@@ -161,12 +171,18 @@ class ProductsController extends Controller
      */
     public function syncProducts()
     {
-        $user = auth('sanctum')->user();
+    /*    $user = auth('sanctum')->user();
         if (!$user || $user->role !== 1) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
-
-        $products = Products::all();
+*/
+        $products = Products::where(function ($query) {
+            $query->where(function ($subquery) {
+                $subquery->whereNotNull('stripe_id')
+                    ->orWhereNotNull('stripe_price_id');
+            })
+                ->orWhere('price', '>', 0);
+        })->get();
 
         foreach ($products as $product) {
             if (empty($product->stripe_id) || empty($product->stripe_price_id)) {
@@ -177,7 +193,7 @@ class ProductsController extends Controller
                 ])->post('https://api.stripe.com/v1/products', [
                     'name' => $product->name,
                 ]);
-
+                dd($response);
                 if ($response->failed()) {
                     return response()->json(['status' => 'error', 'message' => 'Failed to create product on Stripe'], 500);
                 }
@@ -211,4 +227,5 @@ class ProductsController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'Products synchronized with Stripe']);
     }
+
 }

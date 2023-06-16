@@ -244,7 +244,10 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $order = Orders::where('id', '=', $request->order)->where('user_id', '=', $user->id)->firstOrFail();
+        $order = Orders::where('id', '=', $request->order)->where('user_id', '=', $user->id)->first();
+        if($user->role === 1) {
+            $order = Orders::where('id', '=', $request->order)->firstOrFail();
+        }
         $mollie = new \Mollie\Api\MollieApiClient();
         $mollie->setApiKey("test_zRSv7R6psR5P4PwKsggnnyE6pJy68G");
         $invoice = $mollie->invoices->get($request->order);

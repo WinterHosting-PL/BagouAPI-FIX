@@ -176,7 +176,7 @@ class LoginController extends Controller
         $user = auth('sanctum')->user();
         if ($user) {
             return response()->json([
-                'status' => true, 'data' => ['email' => $user->email, 'name' => $user->name, 'verified' => $user->email_verified_at !== null ? true : false]
+                'status' => true, 'data' => ['email' => $user->email, 'name' => $user->name, 'role' => $user->role, 'verified' => $user->email_verified_at !== null ? true : false]
             ], 200);
 
         }
