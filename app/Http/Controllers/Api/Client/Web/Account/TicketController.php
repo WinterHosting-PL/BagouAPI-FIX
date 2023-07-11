@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Account;
 
+use App\Models\UserDiscord;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -27,8 +28,9 @@ class TicketController extends Controller
             'subject' => 'required|string|max:64',
             'logs_url' => 'required|string',
             'message' => 'required|string|max:4000',
-            'license' => 'required|string',
+            'license' => 'nullable|string',
             'discord_id' => 'nullable|string',
+            'discord_user_id' => 'nullable|string',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:2048' // Extensions autorisées et taille maximale de 2MB par fichier
         ]);
@@ -42,16 +44,26 @@ class TicketController extends Controller
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
 
+        if($request->discord_user_id) {
+            $user = UserDiscord::where('discord_id', $request->discord_user_id)->first()->user;
+        }
+        $license = 'unlicensed';
+        if($request->license) {
+            $license = $request->license;
+        }
         $ticket = new Ticket();
         $ticket->name = $request->subject;
         $ticket->logs_url = $request->logs_url;
-        $ticket->license = $request->license;
+
+        $ticket->license = $license;
         $ticket->status = 'client_answer';
         $ticket->priority = 'normal';
         if($request->discord_id && $request->discord_user_id) {
             $ticket->discord_id = $request->discord_id;
             $ticket->discord_user_id = $request->discord_user_id;
-
+            if($user) {
+                $ticket->user_id = $user->id;
+            }
         } else {
             $ticket->user_id = $user->id;
         }
@@ -91,16 +103,17 @@ class TicketController extends Controller
             }
         }
         // Send email to user and contact
-        Mail::to($user->email)->send(new TicketCreatedMail($ticket));
+        if($user) {
+            Mail::to($user->email)->send(new TicketCreatedMail($ticket));
+        }
         Mail::to('contact@bagou450.com')->send(new TicketCreatedMail($ticket));
-        Mail::to('test-fb71c2@test.mailgenius.com')->send(new TicketCreatedMail($ticket));
-       // Mail::to('test-e5436b@test.mailgenius.com')->send(new TicketCreatedMail($ticket));
 
         return response()->json(['status' => 'success']);
     }
 
     public function updateTicketStatus(Int $ticket, Request $request)
     {
+
         $validator = Validator::make($request->all(), [
             'status' => 'required|string|in:support_answer,client_answer,closed'
         ]);
@@ -114,13 +127,54 @@ class TicketController extends Controller
         if (!$user && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
-        if ($user->id !== $ticket->user_id && $user->role !== 1 && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
-            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+
+        if($user) {
+            if ($user->id !== $ticket->user_id && $user->role !== 1) {
+                return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+            }
+        } else {
+            if((!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
+                return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+            }
+        }
+        if($request->status === $ticket->status) {
+            return response()->json(['status' => 'success']);
         }
         $ticket->status = $request->status;
         $ticket->save();
+        if($ticket->discord_id && $request->status === 'closed') {
+            $discordToken = config('services.discord.token');
+            $discordServer = config('services.discord.server');
+
+            $discordEndpoint = "https://discord.com/api/v10/";
+            $hearders = [
+                'Authorization' => "Bot $discordToken"
+            ];
+            Http::withHeaders($hearders)->delete("$discordEndpoint/channels/$ticket->discord_id");
+            $requestDiscordUserCreateDm = Http::withHeaders($hearders)->post($discordEndpoint . 'users/@me/channels', [
+                'recipient_id' => $ticket->discord_user_id
+            ])->json();
+            $channelId = $requestDiscordUserCreateDm['id'];
+            $message = "Dear customer,\n\n We would like to inform you that your ticket (#$ticket->id) has been successfully closed. To access the ticket logs, please create an account on our website https://bagou450.com and link it to your discord account.\n\nThank you for choosing our services! If you have any further inquiries or require assistance, please don't hesitate to reach out to us.\n\nHave a great day!\n\nSincerely,Bagouox\nBagou450 Team";
+            if($ticket->user) {
+                $firstname = $ticket->user->firstname;
+                $lastname = $ticket->user->lastname;
+                if(!$lastname || $firstname) {
+                    $lastname = '';
+                    $firstname = 'customer';
+                }
+                $message = "Dear $lastname $firstname,\n\n We would like to inform you that your ticket (#$ticket->id) has been successfully closed. You can review the ticket logs by clicking on this link https://bagou450.com/tickets/$ticket->id .\n\nThank you for choosing our services! If you have any further inquiries or require assistance, please don't hesitate to reach out to us.\n\nHave a great day!\n\nSincerely\nBagouox\nBagou450 Team";
+            }
+            Http::withHeaders($hearders)->post($discordEndpoint . 'channels/' . $channelId . '/messages', [
+                'content' => $message
+            ]);
+        }
         // Send email to user and contact
-        Mail::to($ticket->user->email)->send(new TicketStatusUpdatedMail($ticket));
+        if($ticket->user) {
+            Mail::to($ticket->user->email)->send(new TicketStatusUpdatedMail($ticket));
+
+        }
+
         Mail::to('contact@bagou450.com')->send(new TicketStatusUpdatedMail($ticket));
 
         return response()->json(['status' => 'success']);
@@ -130,6 +184,8 @@ class TicketController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'message' => 'required|string|max:2000',
+            'discord_user_id' => 'nullable|string',
+            'discord_id' => 'nullable|string',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:2048' // Extensions autorisées et taille maximale de 2MB par fichier
         ]);
@@ -143,9 +199,16 @@ class TicketController extends Controller
         if (!$user && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
-        if ($user->id !== $ticket->user_id && $user->role !== 1 && (!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" )) {
-            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        if($user) {
+            if ($user->id !== $ticket->user_id && $user->role !== 1) {
+                return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+            }
+        } else {
+            if(!$request->discord_id && !$request->discord_user_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" ) {
+                return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+            }
         }
+
         $message = new TicketMessage();
         $message->ticket_id = $ticket->id;
         if($request->discord_id && $request->discord_user_id) {
@@ -183,23 +246,33 @@ class TicketController extends Controller
                 $attachmentFile->move(public_path('attachments'), $attachment->unique_name);
             }
         }
-        if($user->role !== 1 || $request->bearerToken() === "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" ) {
-            $ticket->status = 'client_answer';
+        if($user) {
+            if($user->role !== 1) {
+                $ticket->status = 'client_answer';
+            } else {
+                $ticket->status = 'support_answer';
+            }
         } else {
-            $ticket->status = 'support_answer';
+            if($request->bearerToken() === "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r" && $request->discord_user_id !== '444165634155085824') {
+                $ticket->status = 'client_answer';
+            } else {
+                $ticket->status = 'support_answer';
+            }
         }
+
         $ticket->save();
         // Send email to user and contact
+        $discordToken = config('services.discord.token');
+        $discordServer = config('services.discord.server');
 
+        $hearders = [
+            'Authorization' => "Bot $discordToken"
+        ];
+        $discordEndpoint = "https://discord.com/api/v10/";
 
         if($ticket->discord_id && $request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r") {
-            $discordToken = config('services.discord.token');
-            $discordServer = config('services.discord.server');
 
-            $discordEndpoint = "https://discord.com/api/v10/";
-            $hearders = [
-                'Authorization' => "Bot $discordToken"
-            ];
+
             $requestDiscord = Http::withHeaders($hearders);
             foreach($attachementlist as $attachment) {
                 $requestDiscord->attach($attachment['name'], $attachment['content'], $attachment['name']);
@@ -207,19 +280,29 @@ class TicketController extends Controller
             $response = $requestDiscord->post($discordEndpoint . 'channels/' . $ticket->discord_id . '/messages', [
                 'content' => 'New message from **' . strtoupper($user->lastname) . ' ' . ucfirst($user->firstname) . "**\n ```" . strval($request->message) . ' ```'
             ]);
+
+
+        }
+        if($ticket->discord_user_id) {
             //Send pm to the user
             $requestDiscordUserCreateDm = Http::withHeaders($hearders)->post($discordEndpoint . 'users/@me/channels', [
                 'recipient_id' => $ticket->discord_user_id
             ])->json();
-            $channelId = $requestDiscordUserCreateDm['id'];
-            Http::withHeaders($hearders)->post($discordEndpoint . 'channels/' . $channelId . '/messages', [
-                'content' => 'New message from **' . strtoupper($user->lastname) . ' ' . ucfirst($user->firstname) . "**\nPlease go on the discord https://discord.com/channels/$discordServer/$ticket->discord_id for see it!"
-            ]);
-
-        } else {
-            Mail::to($ticket->user->email)->send(new TicketMessageAddedMail($ticket, $message));
+            if( $ticket->status === 'support_answer') {
+                $channelId = $requestDiscordUserCreateDm['id'];
+                Http::withHeaders($hearders)->post($discordEndpoint . 'channels/' . $channelId . '/messages', [
+                    'content' => "Dear Customer,\n\nWe would like to inform you that your ticket (#$ticket->id) has received a new response.\n\nThank you for choosing our services! If you have any further inquiries or require assistance, please don't hesitate to reach out to us.\n\nHave a great day!\n\nSincerely,\nBagouox\nBagou450 Team"
+                ]);
+            }
         }
-        Mail::to('contact@bagou450.com')->send(new TicketMessageAddedMail($ticket, $message));
+        if($ticket->user) {
+            Mail::to($ticket->user->email)->send(new TicketMessageAddedMail($ticket, $message));
+
+        }
+        if($ticket->status = 'client_answer') {
+            Mail::to('contact@bagou450.com')->send(new TicketMessageAddedMail($ticket, $message));
+
+        }
 
         // Upload ticket detail to discord
         return response()->json(['status' => 'success']);
@@ -228,6 +311,7 @@ class TicketController extends Controller
     public function getMessages($id)
     {
         $ticket = Ticket::findOrFail($id);
+
         $user = auth('sanctum')->user();
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
@@ -236,10 +320,16 @@ class TicketController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
         $messages = $ticket->messages->map(function ($message) {
-            $messageuser = User::findOrFail($message->user_id);
+            $messageuser = "Discord User";
+
+            if($message->user_id) {
+                $messageuser = User::findOrFail($message->user_id);
+                $messageuser = $messageuser->firstname . ' ' . $messageuser->lastname;
+
+            }
             return [
                 'position' => $message->position,
-                'user' => $messageuser->firstname . ' ' . $messageuser->lastname,
+                'user' => $messageuser,
                 'message' => $message->content,
             ];
         });
@@ -403,5 +493,11 @@ class TicketController extends Controller
         } else {
             return response()->json(['status' => 'error', 'message' => 'Attachment not found'], 404);
         }
+    }
+    public function getLastedTicketNumber(Request $request){
+        if ($request->bearerToken() !== "xV5YXpmSFHCzIj5Ha5w4AjsZwD0CTWeK7UFsk2Tigy2dIMgPG8ozXvwV3OVwqqz5r") {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+        return response()->json(['status' => 'success', 'data' => Ticket::latest()->value('id')], 200);
     }
 }

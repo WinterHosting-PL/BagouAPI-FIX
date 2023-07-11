@@ -6,6 +6,8 @@ use App\Mail\InvoiceMail;
 use App\Mail\TestMail;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Products;
 use App\Models\Orders;
@@ -47,94 +49,71 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $coupon = 0;
-        $product = Products::where('id', '=', $request->product)->firstOrFail();
-        if ($request->couponcode) {
-            $co = CouponCode::where('name', '=', $request->couponcode)->first();
-            if (!$co) {
-                return response()->json(['status' => 'error', 'message' => 'Imposible to found this promotional code.'], 500);
-            }
-            $reduction = $product->price * $co->value / 100;
-            $nouveauPrix = $product->price - $reduction;
-            $coupon = strval(number_format($nouveauPrix, 2));
+        if (!$user->address || !$user->country || !$user->city || !$user->region || !$user->postal_code) {
+            return response()->json(['status' => 'error', 'message' => 'You need to link a adress to your account.'], 500);
         }
-        $mollie = new \Mollie\Api\MollieApiClient();
-        $mollie->setApiKey("test_zRSv7R6psR5P4PwKsggnnyE6pJy68G");
-        $user = Auth::user();
+        $order = Orders::where('user_id', $user->id)->where('products', $request->products)->where('created_at', '<', Carbon::now()->subHours(24)->toDateTimeString())->first();
+        if($order) {
+            return response()->json(['status' => 'success', 'data' => $order->checkout], 200);
+        }
+
+        $product = Products::where('id', '=', $request->product)->firstOrFail();
+        $data = [
+            'success_url' => "https://privatewebsite.bagou450.com/product/purchase/$product->id",
+            'cancel_url' => "https://privatewebsite.bagou450.com/product/purchase/$product->id",
+            'currency' => 'EUR',
+            'customer_email' => $user->email,
+            'customer_creation' => 'always'
+        ];
+        $data['mode'] = 'payment';
+        $items = array();
+        foreach ($request->products as $product) {
+            $productdata = Products::where('id', '=', $product)->firstOrFail();
+            if($productdata->reccurent) {
+                $data['mode'] = 'subscription';
+                $data['line_items'] = [[
+                    'price' => $productdata->stripe_price_id,
+                    'quantity' => 1
+                ]];
+                $data['customer_creation'] = null;
+                break;
+            }
+            $items[] = array('price' => $productdata->stripe_price_id, 'quantity' => 1);
+
+        }
+        $data['line_items'] = $items;
         $orderfirst = Orders::latest()->first();
         $id = 0;
         if ($orderfirst) {
             $id = $orderfirst->id + 1;
         }
-        if (!$user->address || !$user->postal_code || !$user->city || !$user->country || !$user->name || !$user->lastname || !$user->email) {
-            return response()->json(['status' => 'error', 'message' => 'Some adress informations are missing.'], 500);
+
+        $request = Http::asForm()->withHeaders([
+            'Authorization' => 'Bearer ' . config('services.stripe.secret'),
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ])->post('https://api.stripe.com/v1/checkout/sessions', $data)->object();
+        $name = "$user->firstname $user->lastname";
+        if ($user->society && $user->society !== '') {
+            $name = $user->society;
         }
-        $data = $mollie->orders->create([
-            "amount" => [
-                "value" => strval(number_format($product->price + 0.35, 2)),
-                "currency" => "EUR",
-            ],
-            "billingAddress" => [
-                "streetAndNumber" => $user->address,
-                "postalCode" => $user->postal_code,
-                "city" => $user->city,
-                "country" => (new ISO3166)->name($user->country)['alpha2'],
-                "givenName" => $user->name,
-                "familyName" => $user->lastname,
-                "email" => $user->email,
-            ],
-            "shippingAddress" => [
-                "streetAndNumber" => $user->address,
-                "postalCode" => $user->postal_code,
-                "city" => $user->city,
-                "country" => (new ISO3166)->name($user->country)['alpha2'],
-                "givenName" => $user->name,
-                "familyName" => $user->lastname,
-                "email" => $user->email,
-            ],
-            "locale" => "en_US",
-            "orderNumber" => "#" . strval($id),
-            "redirectUrl" => "https://privatewebsite.bagou450.com/product/purchase/$product->id",
-            "webhookUrl" => $request->webhookUrl,
-            "metadata" => [
-                "order_id" => $id
-            ],
-            "lines" => [
-                [
-                    "name" => $product->name,
-                    "productUrl" => "https://bagou450.com/product/$product->id",
-                    "imageUrl" => "https://cdn.bagou450.com/assets/img/addons/$product->id",
-                    "quantity" => 1,
-                    "vatRate" => strval(number_format(0, 2)),
-                    "vatAmount" => [
-                        "currency" => "EUR",
-                        "value" => strval(number_format(0, 2)),
-                    ],
-                    "unitPrice" => [
-                        "currency" => "EUR",
-                        "value" => strval(number_format($product->price + 0.35, 2)),
-                    ],
-                    "totalAmount" => [
-                        "currency" => "EUR",
-                        "value" => strval(number_format($product->price + 0.35, 2)),
-                    ]
-
-                ],
-
-            ],
-        ]);
         $order = array(
             'id' => $id,
             'user_id' => $user->id,
-            'product_id' => $request->product,
-            'mollie_id' => $data->id,
+            'products' => $request->products,
+            'stripe_id' => $request->id,
             'status' => 'incomplete',
-            'price' => $product->price,
-            'checkout' => $data->_links->checkout->href
+            'price' => $request->amount_total,
+            'checkout' => $request->url,
+            'address' => $user->address,
+            'country' => $user->country,
+            'city' => $user->city,
+            'region' => $user->region,
+            'postal_code' => $user->postal_code,
+            'name' => $name
         );
         Orders::create($order);
 
-        return response()->json(['status' => 'success', 'data' => $data->_links->checkout->href], 200);
+        return response()->json(['status' => 'success', 'data' => $request->url], 200);
 
     }
     public function status(Request $request): \Illuminate\Http\JsonResponse
@@ -149,13 +128,19 @@ class OrdersController extends BaseController
         }
         (new \App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController)->updatestatus();
 
-        $order = Orders::where('product_id', '=', $request->id)->where('user_id', '=', $user->id)->where('status', '!=', 'expired')->first();
+        $order = Orders::where('id', '=', $request->id)->where('user_id', '=', $user->id)->first();
 
         if ($order) {
-            $addon = Products::where('id', '=', $order->product_id)->firstOrFail();
-            if ($order->status === 'complete' && $addon->licensed) {
-                $order->license = License::where('order_id', '=', $order->id)->where('user_id', '=', $user->id)->firstOrFail()->transaction;
+            $licenses = array();
+            if ($order->status === 'complete') {
+                foreach ($order->products as $product) {
+                    $productdata = Products::where('id', $product->id)->firstOrFail();
+                    if($productdata->licensed) {
+                        $licenses[] = array('product' => $product->id, 'product_name' => $product->name, 'license' => License::where('order_id', '=', $order->id)->where('product_id', '=', $product->id)->where('user_id', '=', $user->id)->firstOrFail()->transaction);
+                    }
+                }
             }
+            $order->licenses = $licenses;
             return response()->json(['status' => 'success', 'data' => ['exist' => true, 'order' => $order]], 200);
 
         }
@@ -168,90 +153,77 @@ class OrdersController extends BaseController
         /*
          * Update status of all mollie payment
          */
-        $mollie = new \Mollie\Api\MollieApiClient();
-        $mollie->setApiKey("test_zRSv7R6psR5P4PwKsggnnyE6pJy68G");
+        $request = Http::asForm()->withHeaders([
+            'Authorization' => 'Bearer ' . config('services.stripe.secret'),
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ]);
         $orders = Orders::where('status', '=', 'incomplete')->get();
-        foreach ($orders as $order) {
-            $payment = $mollie->orders->get($order->mollie_id);
-            if ($payment->isPaid()) {
-                Orders::where('id', '=', $order->id)->update(['status' => 'complete']);
-                $addon = Products::where('id', '=', $order->product_id)->firstOrFail();
-                $user = User::where('id', '=', $order->user_id)->firstOrFail();
 
-                $transaction = '5LB094126U433992N';
-                while ($transaction === '5LB094126U433992N' or License::where("transaction", '=', $transaction)->exists()) {
-                    $bytes = random_bytes(32);
-                    $transaction = "bgx4_" . bin2hex($bytes);
+        foreach ($orders as $order) {
+            $payment = $request->post("https://api.stripe.com/v1/checkout/sessions/$order->stripe_id")->object();
+            if($order->created_at->created_at->diffInHours(now()) >= 24 && $payment->payment_status != 'paid') {
+                Orders::where('id', '=', $order->id)->update(['status' => 'expired']);
+                continue;
+            }
+            if ($payment->payment_status == 'paid') {
+                Orders::where('id', '=', $order->id)->update(['status' => 'complete']);
+                $licenses = array();
+                $items = array();
+                foreach ($order->products as $product) {
+                    $addon = Products::where('id', $product->id)->firstOrFail();
+                    $user = User::where('id', '=', $order->user_id)->firstOrFail();
+                    if($product->licensed) {
+                        $transaction = 'aa';
+                        while ($transaction === 'aa' or License::where("transaction", '=', $transaction)->exists()) {
+                            $bytes = random_bytes(32);
+                            $transaction = "bgxw_" . bin2hex($bytes);
+                        }
+                        $license = ['blacklisted' => false, "sxcid" => null, 'buyer' => $user->name, 'fullname' => $addon->name, 'ip' => [], 'maxusage' => 2, 'product_id' => $addon->id, 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500, 'bbb_id' => $addon->bbb_id, 'bbb_license' => $transaction, 'order_id' => $order->id, 'user_id' => $order->user_id];
+                        License::create($license);
+                        $licenses[] = $license;
+                    }
+                    $items[] = [
+                        'description' => $addon->name,
+                        'quantity' => 1,
+                        'price' => $addon->price,
+                        'tax' => 0.35,
+                    ];
                 }
 
-                $license = ['blacklisted' => false, "sxcid" => null, 'buyer' => $user->name, 'fullname' => $addon->name, 'ip' => [], 'maxusage' => 2, 'name' => $addon->id, 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500, 'bbb_id' => $addon->bbb_id, 'bbb_license' => $transaction, 'order_id' => $order->id, 'user_id' => $order->user_id];
-                License::create($license);
-                $licenses = array();
-                array_push($licenses, $license);
+
 
                 // Récupération des données pour la facture
                 $invoice_number = "#$order->id"; // Numéro de la facture
                 $invoice_date = $order->created_at->format('Y-m-d'); // Date de la facture
                 $due_date = $order->created_at->format('Y-m-d'); // Date limite de paiement
-                $name = "$user->firstname $user->lastname";
-                if ($user->society && $user->society !== '') {
-                    $name = $user->society;
-                }
                 $customer = [
-                    'name' => $name,
-                    'address' => $user->address,
-                    'city' => $user->city,
-                    'country' => $user->country,
-                    'region' => $user->region,
-                    'postal_code' => $user->postal_code,
+                    'name' => $order->name,
+                    'address' => $order->address,
+                    'city' => $order->city,
+                    'country' => $order->country,
+                    'region' => $order->region,
+                    'postal_code' => $order->postal_code,
                     'email' => $user->email,
-                ];
-                $items = [
-                    [
-                        'description' => $addon->name,
-                        'quantity' => 1,
-                        'price' => $addon->price,
-                        'tax' => 0.35,
-                    ],
                 ];
                 // Création du PDF de la facture
                 $pdf = PDF::loadView('invoices.invoice', compact('invoice_number', 'invoice_date', 'due_date', 'customer', 'items'));
                 $pdf->setPaper('A4', 'portrait');
-
-                Mail::to($user->email)->send(new InvoiceMail($order->id, $customer, $items, $invoice_date, $due_date, $pdf));
-
-
-                Mail::to($user->email)
-                    ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
-                Mail::to('receipts@bagou450.com')
-                    ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
-
+                  Mail::to($user->email)
+                      ->send(new OrderConfirmed($pdf->download('invoice.pdf')));
+                    Mail::to('receipts@bagou450.com')
+                        ->send(new OrderConfirmed($pdf->download('invoice.pdf')));
+                if($licenses) {
+                    Mail::to($user->email)
+                        ->send(new TestMail($licenses));
+                    Mail::to('receipts@bagou450.com')
+                        ->send(new TestMail($licenses));
+                }
             }
-            if ($payment->isExpired()) {
-                Orders::where('id', '=', $order->id)->update(['status' => 'expired']);
-            }
-
         }
         return response()->json(['status' => 'success'], 200);
 
 
 
-
-    }
-    public function generateInvoice(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $user = auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
-        }
-        $order = Orders::where('id', '=', $request->order)->where('user_id', '=', $user->id)->first();
-        if($user->role === 1) {
-            $order = Orders::where('id', '=', $request->order)->firstOrFail();
-        }
-        $mollie = new \Mollie\Api\MollieApiClient();
-        $mollie->setApiKey("test_zRSv7R6psR5P4PwKsggnnyE6pJy68G");
-        $invoice = $mollie->invoices->get($request->order);
-        return response()->json(['status' => 'success', 'data' => $invoice->_links->pdf->href], 200);
 
     }
 
@@ -261,11 +233,7 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $order = Orders::where('id', '=', $request->order)->where('user_id', '=', $user->id)->firstOrFail();
-        $mollie = new \Mollie\Api\MollieApiClient();
-        $mollie->setApiKey("test_zRSv7R6psR5P4PwKsggnnyE6pJy68G");
-        $order = $mollie->orders->get($request->order);
-        return response()->json(['status' => 'success', 'data' => $order], 200);
+        return response()->json(['status' => 'success', 'data' => Orders::where('id', '=', $request->order)->where('user_id', '=', $user->id)->firstOrFail()], 200);
 
     }
 
@@ -275,15 +243,15 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $order = Orders::where('id', '=', $order)->where('user_id', '=', $user->id)->firstOrFail();
-        $rand_str = bin2hex(random_bytes(128));
-        while (Orders::where('token', '=', $rand_str)->exists()) {
-            $rand_str = bin2hex(random_bytes(128));
+        $order = Orders::where('id', '=', $order)->where('user_id', '=', $user->id)->whereIn('product_id', $order->products)->where('status', 'complete')->firstOrFail();
+        $token = $request->product_id . "_" . bin2hex(random_bytes(128));
+        while (Orders::where('token', $token)->exists()) {
+            $token = $request->product_id . "_" . bin2hex(random_bytes(128));
         }
-        $order->update(['token' => $rand_str]);
-        $order->save();
-        return response()->json(['status' => 'success', 'data' => "/orders/downloads/$rand_str"], 200);
 
+        $order->update(['token' => $token]);
+
+        return response()->json(['status' => 'success', 'data' => "/orders/downloads/$token"], 200);
     }
     public function download(Request $request, $token)
     {
@@ -292,7 +260,7 @@ class OrdersController extends BaseController
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
         $order = Orders::where('user_id', '=', $user->id)->where('token', '=', $token)->firstOrFail();
-        $addon = Products::where('id', '=', $order->product_id)->firstOrFail();
+        $addon = Products::where('id', '=', explode('_', $order->token)[0])->firstOrFail();
         $order->update(['token' => '']);
         $order->save();
         return response()->download("../addonfiles/$addon->id.zip", "$addon->name.zip", ['Content-Type: application/zip']);
@@ -320,35 +288,33 @@ class OrdersController extends BaseController
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
         $order = Orders::where('user_id', '=', $user->id)->where('token', '=', $token)->firstOrFail();
-        $addon = Products::where('id', '=', $order->product_id)->firstOrFail();
 
         // Récupération des données pour la facture
         $invoice_number = "#$order->id"; // Numéro de la facture
         $invoice_date = $order->created_at->format('Y-m-d'); // Date de la facture
         $due_date = $order->created_at->format('Y-m-d'); // Date limite de paiement
-        $name = "$user->firstname $user->lastname";
-        if ($user->society && $user->society !== '') {
-            $name = $user->society;
-        }
         $customer = [
-            'name' => $name,
-            'address' => $user->address,
-            'city' => $user->city,
-            'country' => $user->country,
-            'region' => $user->region,
-            'postal_code' => $user->postal_code,
+            'name' => $order->name,
+            'address' => $order->address,
+            'city' => $order->city,
+            'country' => $order->country,
+            'region' => $order->region,
+            'postal_code' => $order->postal_code,
             'email' => $user->email,
         ];
-        $items = [
-            [
+        $items = [];
+        foreach($order->products as $product) {
+            $addon = Products::where('id', '=', $product)->firstOrFail();
+            $items[] = [
                 'description' => $addon->name,
                 'quantity' => 1,
                 'price' => $addon->price,
                 'tax' => 0.35,
-            ],
-        ];
+            ];
+        }
+        $status = $order->status;
         // Création du PDF de la facture
-        $pdf = PDF::loadView('invoices.invoice', compact('invoice_number', 'invoice_date', 'due_date', 'customer', 'items'));
+        $pdf = PDF::loadView('invoices.invoice', compact('invoice_number', 'invoice_date', 'due_date', 'customer', 'items', 'status'));
         $pdf->setPaper('A4', 'portrait');
 
 

@@ -175,8 +175,23 @@ class LoginController extends Controller
     {
         $user = auth('sanctum')->user();
         if ($user) {
+            $discord_avatar = null;
+            $discord_username = null;
+            $discord_discriminator = null;
+            if($user->discord) {
+                $discordUser = $user->discord;
+                $discord_avatar = "https://cdn.discordapp.com/avatars/$discordUser->discord_id/$discordUser->avatar";
+                $discord_username = $discordUser->username;
+                $discord_discriminator = $discordUser->discriminator;
+            }
             return response()->json([
-                'status' => true, 'data' => ['email' => $user->email, 'name' => $user->name, 'role' => $user->role, 'verified' => $user->email_verified_at !== null ? true : false]
+                'status' => true, 'data' => ['email' => $user->email,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                    'verified' => $user->email_verified_at !== null ? true : false,
+                    'discord_username' => $discord_username,
+                    'discord_discriminator' => $discord_discriminator,
+                    'discord_avatar' => $discord_avatar]
             ], 200);
 
         }

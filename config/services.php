@@ -39,7 +39,10 @@ return [
     ],
     'discord' => [
         'token' => env('DISCORD_TOKEN'),
-        'server' => env('DISCORD_SERVER')
+        'server' => env('DISCORD_SERVER'),
+        'client' => env('DISCORD_CLIENT'),
+        'client_secret' => env('DISCORD_CLIENT_SECRET'),
+        'redirection' => env('DISCORD_REDIRECTION_URL')
     ],
 
 ];

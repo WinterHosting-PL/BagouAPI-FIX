@@ -42,7 +42,7 @@
 <div class="container">
     <div class="content">
         <h2>Bagou450 - Ticket Status Updated</h2>
-        <p>Dear {{ $ticket->user->name }},</p>
+        <p>{{ $ticket->user ? 'Dear ' . $ticket->user->name . ',' : 'Hello,' }}</p>
         <p>The status of your ticket (#{{ $ticket->id }} - {{ $ticket->name }}) has been updated.</p>
         <p>You can view your ticket by clicking the button below:</p>
         <a href="https://bagou450.com/account/tickets/{{ $ticket->id }}" target="_blank">View Ticket</a>

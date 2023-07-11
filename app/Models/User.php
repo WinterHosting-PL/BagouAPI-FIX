@@ -71,4 +71,8 @@ class User extends Authenticatable
     {
         return [];
     }
+    public function discord()
+    {
+        return $this->hasOne(UserDiscord::class, 'user_id');
+    }
 }

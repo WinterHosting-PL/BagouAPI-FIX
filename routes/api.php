@@ -22,6 +22,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::prefix('client')->group(function () {
     Route::prefix('web')->group(function () {
+        Route::prefix('addons')->group(function () {
+            Route::get('/get', [App\Http\Controllers\Api\Client\Web\AddonsController::class, 'get']);
+            Route::get('/getone', [App\Http\Controllers\Api\Client\Web\AddonsController::class, 'getone']);
+
+        });
         Route::prefix('admin')->group(function () {
             Route::prefix('products')->group(function () {
                 Route::get('/', [ProductsController::class, 'listProducts']);
@@ -31,7 +36,6 @@ Route::prefix('client')->group(function () {
             });
         });
         Route::prefix('tickets')->group(function () {
-            Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/', [TicketController::class, 'createTicket']);
                 Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
                 Route::post('/{id}/messages', [TicketController::class, 'addMessage']);
@@ -41,7 +45,7 @@ Route::prefix('client')->group(function () {
                 Route::post('/filter', [TicketController::class, 'filterTickets']);
                 Route::post('/search', [TicketController::class, 'searchTickets']);
                 Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
-            });
+                Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
         });
         Route::prefix('auth')->group(function () {
             Route::post('/login', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'login'])->name('login');
@@ -53,20 +57,23 @@ Route::prefix('client')->group(function () {
             Route::post('/verify', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'sendverificationemail'])->middleware('auth:sanctum');
             Route::get('/isLogged', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'isLogged']);
 
-           /* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-                return 'test';
-            });*/
+
+            /* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+                 return 'test';
+             });*/
             
             Route::get('/sendverificationmail', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'verifyemail'])->middleware('auth:sanctum');
     
         });
         Route::prefix('account')->group(function () {
             Route::get('/getinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getinfos'])->middleware('auth:sanctum');
+            Route::get('/discord/login', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'discordLogin']);
+            Route::get('/discord/callback', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'discordCallback']);
+            Route::get('/discord/get', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getDiscordUser']);
 
             Route::post('/edit', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'edit'])->middleware('auth:sanctum');
             Route::post('/editinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'editinfos'])->middleware('auth:sanctum');
-            
-    
+
         });
         Route::group(['prefix' => 'orders', 'middleware' => ['auth:sanctum']], function () {
             Route::get('/', [OrdersController::class, 'get']);
