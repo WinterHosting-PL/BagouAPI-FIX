@@ -27,8 +27,8 @@ class Orders extends Model
      */
     protected $fillable = [
         'user_id',
-        'product_id',
-        'mollie_id',
+        'products',
+        'stripe_id',
         'status',
         'price',
         'token',
@@ -42,8 +42,8 @@ class Orders extends Model
      */
     protected $casts = [
         'user_id' => 'integer',
-        'product_id' => 'integer',
-        'mollie_id' => 'string',
+        'products' => 'array',
+        'stripe_id' => 'string',
         'status' => 'string',
         'price' => 'integer',
         'token' => 'string',

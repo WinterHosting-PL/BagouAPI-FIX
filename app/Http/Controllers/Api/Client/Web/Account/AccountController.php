@@ -26,8 +26,6 @@ class AccountController extends Controller
         $user = auth('sanctum')->user();
         User::where('id', '=', $user->id)->update(['email' => $request->email]);
 
-        $loginController = new \App\Http\Controllers\Api\Client\Web\Auth\LoginController();
-        $loginController->logout();
         return response()->json(['status' => 'success', 'message' => 'Account credentials successfully updated'], 200);
     }
     public function editinfos(Request $request): \Illuminate\Http\JsonResponse {

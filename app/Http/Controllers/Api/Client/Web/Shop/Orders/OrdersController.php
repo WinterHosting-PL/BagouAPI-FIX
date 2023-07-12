@@ -27,10 +27,17 @@ class OrdersController extends BaseController
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
         $order = array();
-        $orders = Orders::select('status', 'price', 'product_id', 'id')->where('user_id', '=', $user->id)->get();
+        $orders = Orders::select('status', 'price', 'products', 'stripe_id', 'id')->where('user_id', '=', $user->id)->get();
+        if(!$orders) {
+            return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'orders' => null]], 200);
+        }
         foreach ($orders as $ord) {
-            $addon = Products::where('id', '=', $ord->product_id)->select('name', 'version')->firstOrFail();
-            array_push($order, ['product' => $addon->name, 'product_id' => $ord->product_id, 'version' => number_format($addon->version, 2), 'price' => $ord->price, 'status' => $ord->status, 'order_id' => $ord->id]);
+            $addons = array();
+            foreach($ord->products as $addon) {
+               $addons[] = Products::where('id', '=', $addon)->select('name')->firstOrFail();
+
+            }
+            $order[] = ['products' => $addons, 'price' => $ord->price, 'status' => $ord->status, 'order_id' => $ord->id, 'stripe_id' => $ord->stripe_id];
         }
         return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'orders' => $order]], 200);
 
@@ -243,10 +250,13 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $order = Orders::where('id', '=', $order)->where('user_id', '=', $user->id)->whereIn('product_id', $order->products)->where('status', 'complete')->firstOrFail();
-        $token = $request->product_id . "_" . bin2hex(random_bytes(128));
+        $order = Orders::where('id', '=', $order)->where('user_id', '=', $user->id)->where('status', 'complete')->first();
+        if(!$order) {
+            return response()->json(['status' => 'error', 'message' => 'No orders found!'], 500);
+        }
+        $token = bin2hex(random_bytes(128));
         while (Orders::where('token', $token)->exists()) {
-            $token = $request->product_id . "_" . bin2hex(random_bytes(128));
+            $token = bin2hex(random_bytes(128));
         }
 
         $order->update(['token' => $token]);
@@ -259,11 +269,55 @@ class OrdersController extends BaseController
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
-        $order = Orders::where('user_id', '=', $user->id)->where('token', '=', $token)->firstOrFail();
-        $addon = Products::where('id', '=', explode('_', $order->token)[0])->firstOrFail();
+        $order = Orders::where('user_id', '=', $user->id)->where('token', '=', $token)->where('status', 'complete')->first();
+        if(!$order) {
+            return response()->json(['status' => 'error', 'message' => 'No orders found!'], 500);
+        }
+        $archive = new \ZipArchive();
+        $archiveName = "$order->id.zip";
+        if ($archive->open($archiveName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($order->products as $product) {
+                $zipFileName = '../addonfiles/' . $product . '.zip';
+                if(!file_exists($zipFileName)) {
+                    return response()->json(['status' => 'error', 'message' => "Errors can\'t add all files. $zipFileName not exist!"], 500);
+
+                }
+                if ($archive->locateName((string) $product) === false) {
+                    $archive->addEmptyDir((string) $product); // Crée le dossier avec l'ID
+                    $subArchive = new \ZipArchive();
+                    if ($subArchive->open($zipFileName) === true) {
+                        $subArchive->extractTo($product); // Extrait le contenu du fichier ZIP dans le dossier correspondant
+                        $subArchive->close();
+                        $subFiles = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($product));
+                        foreach ($subFiles as $subFile) {
+                            if (!$subFile->isDir()) {
+                                $filePath = $subFile->getPathname();
+                                $relativePath = $product . '/' . str_replace($product . '/', '', $filePath);
+                                $archive->addFile($filePath, $relativePath);
+                            }
+                        }
+
+                    } else {
+                        return response()->json(['status' => 'error', 'message' => 'Can\'t open a zip file..'], 500);
+
+                    }
+                }
+                $archive->deleteName($product);
+
+            }
+            $archive->close();
+        } else {
+            return response()->json(['status' => 'error', 'message' => 'Can\'t create the file.'], 500);
+        }
+
         $order->update(['token' => '']);
         $order->save();
-        return response()->download("../addonfiles/$addon->id.zip", "$addon->name.zip", ['Content-Type: application/zip']);
+        foreach ($order->products as $product) {
+            if (is_dir($product)) {
+                $this->deleteDirectory($product);
+            }
+        }
+        return response()->download($archiveName, $archiveName, ['Content-Type: application/zip'])->deleteFileAfterSend(true);;
 
     }
     public function downloadInvoiceLink(Request $request, $order)
@@ -322,5 +376,21 @@ class OrdersController extends BaseController
         return $pdf->download('invoice.pdf');
     }
 
+    function deleteDirectory($directory) {
+        if (!is_dir($directory)) {
+            return;
+        }
 
+        $files = glob($directory . '/*');
+
+        foreach ($files as $file) {
+            if (is_dir($file)) {
+                $this->deleteDirectory($file);
+            } else {
+                unlink($file);
+            }
+        }
+
+        rmdir($directory);
+    }
 }

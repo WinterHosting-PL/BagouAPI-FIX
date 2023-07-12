@@ -26,7 +26,7 @@ class License extends Model
      * The resource name for this model when it is transformed into an
      * API representation using fractal.
      */
-    public const RESOURCE_NAME = 'license';
+    public const RESOURCE_NAME = 'licenses';
 
 
     /**
@@ -34,7 +34,7 @@ class License extends Model
      *
      * @var string
      */
-    protected $table = 'license';
+    protected $table = 'licenses';
 
 
     /**
@@ -67,10 +67,9 @@ class License extends Model
     protected $casts = [
         'blacklisted' => 'boolean',
         'buyer' => 'string',
-        'fullname' => 'string',
+        'name' => 'string',
         'ip' => 'json',
         'maxusage' => 'integer',
-        'name' => 'integer',
         'transaction',
         'usage' => 'integer',
         'buyerid' => 'string',

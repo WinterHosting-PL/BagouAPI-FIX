@@ -350,11 +350,7 @@ class TicketController extends Controller
         if ($user->role === 1) {
             $ticketsQuery = Ticket::query();
         }
-
         switch ($sort) {
-            case 'status':
-                $ticketsQuery->orderByRaw("FIELD(status, 'support_answer', 'client_answer', 'closed')");
-                break;
             case 'asc_modified':
                 $ticketsQuery->orderBy('updated_at', 'asc');
                 break;

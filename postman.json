@@ -1,0 +1,1752 @@
+{
+  "info": {
+    "_postman_id": "75a7f68c-f120-4da8-8d09-5a1e2c695f56",
+    "name": "API Client",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/client/web/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "user"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Addons",
+      "item": [
+        {
+          "name": "Get Addons",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/addons/get",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "addons",
+                "get"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One Addon",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/addons/getone",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "addons",
+                "getone"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/admin/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "admin",
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/admin/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "admin",
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/admin/products/{{product_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "admin",
+                "products",
+                "{{product_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/admin/products/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "admin",
+                "products",
+                "sync"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Ticket Status",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/{{ticket_id}}/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "{{ticket_id}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Message to Ticket",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/{{ticket_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "{{ticket_id}}",
+                "messages"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/{{ticket_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "{{ticket_id}}",
+                "messages"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/{{ticket_id}}/details",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "{{ticket_id}}",
+                "details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Tickets",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/filter",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "filter"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Tickets",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "search"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Attachment",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/{{attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "{{attachment_id}}",
+                "download"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lasted Ticket",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/tickets/getLasted",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "tickets",
+                "getLasted"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "email",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Token Login",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/tokenlogin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "tokenlogin"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Token Data",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/tokendata",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "tokendata"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "logout"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Send Verification Email",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "verify"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Check Logged In",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/isLogged",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "isLogged"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Send Verification Mail",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/auth/sendverificationmail",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "auth",
+                "sendverificationmail"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Get Account Infos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/getinfos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "getinfos"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Discord Login",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/discord/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "discord",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Discord Callback",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/discord/callback",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "discord",
+                "callback"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Get Discord User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/discord/get",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "discord",
+                "get"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Account",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/edit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "edit"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "field_name",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Account Infos",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/account/editinfos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "account",
+                "editinfos"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "field_name",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "status"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Invoice",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "invoice"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/details",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "details"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Get Download Link",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/downloadlink/{{order_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "downloadlink",
+                "{{order_id}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Download Order",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/downloads/{{token}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "downloads",
+                "{{token}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Invoice Link",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/downloadInvoiceLink/{{order_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "downloadInvoiceLink",
+                "{{order_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Invoice",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/orders/downloadInvoice/{{order_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "orders",
+                "downloadInvoice",
+                "{{order_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shop",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/shop/create",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "shop",
+                "create"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/shop/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "shop",
+                "status"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "License",
+      "item": [
+        {
+          "name": "Get User Licenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/license",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "license"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Send License Email",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/license",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "license"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "license",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete License Usage",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/client/web/license/{{license_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "web",
+                "license",
+                "{{license_id}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pterodactyl",
+      "item": [
+        {
+          "name": "Get Auto Installer",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/getautoinstaller",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "getautoinstaller"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check Online",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/checkOnline",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "checkOnline"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Addons List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/addonsList",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "addonsList"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Version",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/getVersion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "getVersion"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check If Exist",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/checkIfExist",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "checkIfExist"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Plugins",
+      "item": [
+        {
+          "name": "Get Bukkit Plugins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/bukkit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "bukkit"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Spigot Plugins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/spigot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "spigot"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Polymart Plugins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/polymart",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "polymart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Custom Plugins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/custom",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "custom"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plugin Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/getVersions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "getVersions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Minecraft Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/getMcVersions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "getMcVersions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plugin Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/getCategories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "getCategories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Plugin",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/plugins/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "plugins",
+                "download"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "McVersions",
+      "item": [
+        {
+          "name": "Get Minecraft Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mcversions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mcversions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Minecraft Version",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mcversions/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mcversions",
+                "download"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "McMods",
+      "item": [
+        {
+          "name": "Get Minecraft Mods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mods"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Mod Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mods/versions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mods",
+                "versions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Mod Description",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mods/description",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mods",
+                "description"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Minecraft Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/mods/getMcVersions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "mods",
+                "getMcVersions"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "McModPacks",
+      "item": [
+        {
+          "name": "Get Minecraft Mod Packs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Mod Pack Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/versions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "versions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Mod Pack Description",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/description",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "description"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Minecraft Versions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/getMcVersions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "getMcVersions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Mod Packs Description",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/getMcModpacksDescription",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "getMcModpacksDescription"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Mod Pack",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "download"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Egg",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/getEgg",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "getEgg"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Forge",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/getForge",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "getForge"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Fabric",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/client/pterodactyl/modpacks/getFabric",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "pterodactyl",
+                "modpacks",
+                "getFabric"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

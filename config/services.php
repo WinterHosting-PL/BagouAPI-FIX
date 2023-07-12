@@ -37,12 +37,21 @@ return [
             'secret' => env('STRIPE_WEBHOOK_SECRET'),
         ],
     ],
+    'github' => [
+        'client_id' => env('GITHUB_CLIENT_ID'),
+        'client_secret' => env('GITHUB_CLIENT_SECRET')
+    ],
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET')
+    ],
     'discord' => [
         'token' => env('DISCORD_TOKEN'),
         'server' => env('DISCORD_SERVER'),
         'client' => env('DISCORD_CLIENT'),
+        'client_id' => env('DISCORD_CLIENT'),
         'client_secret' => env('DISCORD_CLIENT_SECRET'),
-        'redirection' => env('DISCORD_REDIRECTION_URL')
+        'redirect' => env('DISCORD_OAUTH_REDIRECTION_URL'),
     ],
 
 ];

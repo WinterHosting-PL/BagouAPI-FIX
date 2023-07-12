@@ -5,19 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class UserDiscord extends Model
+class UserGoogle extends Model
 {
     use HasFactory;
 
-    protected $table = 'users_discord';
+    protected $table = 'users_google';
 
     protected $fillable = [
         'user_id',
-        'username',
-        'avatar',
-        'discriminator',
-        'email',
-        'discord_id'
+        'google_id',
+        'avatar'
     ];
 
     public $timestamps = true;

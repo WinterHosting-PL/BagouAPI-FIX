@@ -20,7 +20,7 @@ class LicenseController extends BaseController
 {
     public function get(): \Illuminate\Http\JsonResponse {
         $user = auth('sanctum')->user();
-        return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'license' => License::select('buyer', 'fullname', 'ip', 'maxusage', 'transaction', 'usage', 'version', 'order_id')
+        return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'license' => License::select('buyer', 'name', 'ip', 'maxusage', 'transaction', 'usage', 'version', 'order_id')
         ->where('user_id', '=', $user->id)
         ->get()]], 200);
         
@@ -96,7 +96,7 @@ class LicenseController extends BaseController
                                     $transaction = "bgx_" . bin2hex($bytes);
                                 }
                             }
-                            $license = ['blacklisted' => false, "sxcid" => "$userid", 'buyer' => $userid, 'fullname' => $addon['name'], 'ip' => [], 'maxusage' => 2, 'name' => $addon['id'], 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500];
+                            $license = ['blacklisted' => false, "sxcid" => "$userid", 'buyer' => $userid, 'name' => $addon['name'], 'ip' => [], 'maxusage' => 2, 'product_id' => $addon['id'], 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500];
                             if($user) {
                                 array_push($license, ['user_id' => $user->id]);
                             }

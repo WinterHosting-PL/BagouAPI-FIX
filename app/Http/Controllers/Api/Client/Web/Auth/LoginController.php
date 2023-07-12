@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Auth;
 
+use App\Models\UserDiscord;
+use App\Models\UserGoogle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Routing\Controller;
 use App\Models\User;
@@ -60,6 +64,10 @@ class LoginController extends Controller
      */
     public function login(LoginRequest $request): \Illuminate\Http\JsonResponse
     {
+        $user = auth('sanctum')->user();
+        if ($user) {
+            return response()->json(['status' => 'error', 'message' => 'You are already logged!.'], 500);
+        }
         if (!User::where('email', '=', $request->email)->exists()) {
             return response()->json([
                 'status' => 'error',
@@ -90,7 +98,7 @@ class LoginController extends Controller
      */
     public function TokenLogin(Request $request)
     {
-        if($request->token === '' || !$request->token) {
+        if ($request->token === '' || !$request->token) {
             return response()->json(['status' => 'error', 'message' => 'Can\'t login a user with a empty token'], 500);
         }
         $user = User::where('login_token', $request->token)->firstOrFail();
@@ -107,8 +115,10 @@ class LoginController extends Controller
             ]
         ]);
     }
-    public function tokendata(Request $request) {
-        if($request->token === '' || !$request->token) {
+
+    public function tokendata(Request $request)
+    {
+        if ($request->token === '' || !$request->token) {
             return response()->json(['status' => 'error', 'message' => 'Invalid token.'], 500);
         }
         $user = User::where('login_token', $request->token)->firstOrFail();
@@ -120,6 +130,7 @@ class LoginController extends Controller
             ]
         ]);
     }
+
     /**
      * Log the user out of the application.
      *
@@ -142,35 +153,6 @@ class LoginController extends Controller
         ], 500);
     }
 
-    public function sendverificationemail(Request $request): \Illuminate\Http\JsonResponse
-    {
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->email_verified_at) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'This email was already verified in pastpriv.'
-                ], 500);
-            }
-            $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            $randomString = '';
-
-            for ($i = 0; $i < 32; $i++) {
-                $index = rand(0, strlen($characters) - 1);
-                $randomString .= $characters[$index];
-            }
-            User::where('id', '=', $user->id)->update(['email_token' => $randomString]);
-            Mail::to($user->email)
-                ->send(new LoginEmail($randomString));
-            return response()->json([
-                'status' => 'success', 'message' => 'Please check your mailbox.'
-            ], 200);
-        }
-        return response()->json([
-            'status' => 'error', 'message' => 'Your are not logged.'
-        ], 500);
-    }
-
     public function isLogged(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = auth('sanctum')->user();
@@ -178,7 +160,7 @@ class LoginController extends Controller
             $discord_avatar = null;
             $discord_username = null;
             $discord_discriminator = null;
-            if($user->discord) {
+            if ($user->discord) {
                 $discordUser = $user->discord;
                 $discord_avatar = "https://cdn.discordapp.com/avatars/$discordUser->discord_id/$discordUser->avatar";
                 $discord_username = $discordUser->username;
@@ -201,13 +183,171 @@ class LoginController extends Controller
 
     }
 
-    public function verifyemail(Request $request)
+
+    public function oauthlogin(Request $request)
     {
-        $token = $request->token;
-        $user = User::where('email_token', '=', $token)->firstOrFail();
-        User::where('id', '=', $user->id)->update(['email_verified_at' => \Carbon\Carbon::now(), 'email_token' => 'null']);
-        return Redirect::to('http://bagou450.com');
+        $user = auth('sanctum')->user();
+        if ($user) {
+            return response()->json(['status' => 'error', 'message' => 'You are already logged!.'], 500);
+        }
+        $response = '';
+        $redirectUri = config('services.discord.redirect') . "?type=$request->type";
+        if ($request->type === 'discord') {
+            $clientId = config('services.discord.client');;
+            $scopes = 'identify email';
+            $discordAuthorizeUrl = 'https://discord.com/api/oauth2/authorize';
+            $queryParams = http_build_query([
+                'client_id' => $clientId,
+                'redirect_uri' => $redirectUri,
+                'response_type' => 'code',
+                'scope' => $scopes,
+            ]);
+            $response = "$discordAuthorizeUrl?$queryParams";
+        } else if ($request->type === 'google') {
+            $response = 'https://accounts.google.com/o/oauth2/auth' .
+                '?client_id=' . config('services.google.client_id') .
+                '&redirect_uri=' . $redirectUri .
+                '&response_type=code' .
+                '&scope=email%20profile';
+
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['url' => "$response"]]);
     }
 
+    public function oauthloginCallback(Request $request)
+    {
+        $user = auth('sanctum')->user();
+        if ($user) {
+            return response()->json(['status' => 'error', 'message' => 'You are already logged!.'], 500);
+        }
+        if ($request->type === 'discord') {
+            $clientId = config('services.discord.client');;
+            $clientSecret = config('services.discord.client_secret');
+            $redirectUri = config('services.discord.oauth_redirection');
+            $code = $request->token;
+            $scopes = 'identify email';
+            $discordTokenUrl = 'https://discord.com/api/oauth2/token';
+            $data = [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'redirect_uri' => $redirectUri,
+                'scope' => $scopes, // Les scopes doivent correspondre à ceux utilisés lors de l'autorisation
+            ];
+            $response = Http::asForm()->post($discordTokenUrl, $data);
+            if ($response->successful()) {
+                $accessToken = $response->json('access_token');
 
+                // Utilisez l'access token pour récupérer les informations utilisateur
+                $discordUserUrl = 'https://discord.com/api/users/@me';
+                $userInfoResponse = Http::withToken($accessToken)->get($discordUserUrl);
+                if ($userInfoResponse->successful()) {
+                    $userInfo = $userInfoResponse->json();
+                    $discordId = $userInfo['id'];
+                    $userDiscord = UserDiscord::where('discord_id', $userInfo['id'])->firstOrFail();
+                    $user = User::where('id', $userDiscord->user_id)->firstOrFail();
+                    $rand_str = bin2hex(random_bytes(128));
+                    while (User::where('login_token', '=', $rand_str)->exists()) {
+                        $rand_str = bin2hex(random_bytes(128));
+                    }
+                    $user->login_token = $rand_str;
+                    $user->save();
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => [
+                            'email' => $user->email,
+                            'name' => $user->name,
+                            'avatar' => $userDiscord->avatar,
+                            'access_token' => $rand_str,
+                            'token_type' => 'Bearer',
+                            'discord_id' => $userInfo['id']
+                        ]
+                    ]);
+                }
+            }
+            return response()->json(['status' => 'error', 'message' => 'Unable to retrieve user information from Discord'], 500);
+
+        }
+        if ($request->type === 'google') {
+            $redirectUri = config('services.discord.redirect') . "?type=google";
+            $response = Http::post('https://oauth2.googleapis.com/token', [
+                'code' => $request->token,
+                'client_id' => config('services.google.client_id'),
+                'client_secret' => config('services.google.client_secret'),
+                'redirect_uri' => $redirectUri,
+                'grant_type' => 'authorization_code',
+            ])->object();
+            if(isset($response->error) || !isset($response->access_token)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+
+            $accessToken = $response->access_token;
+            $profile = Http::get('https://www.googleapis.com/oauth2/v2/userinfo', [
+                'access_token' => $accessToken,
+            ])->object();
+            $userGoogle = UserGoogle::where('google_id', "$profile->id")->first();
+            if ($userGoogle) {
+                //Compte google déja liée.
+                $user = User::where('id', $userGoogle->user_id)->first();
+                if ($user) {
+                    $rand_str = bin2hex(random_bytes(128));
+                    while (User::where('login_token', '=', $rand_str)->exists()) {
+                        $rand_str = bin2hex(random_bytes(128));
+                    }
+                    $user->login_token = $rand_str;
+                    $user->save();
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => [
+                            'email' => $user->email,
+                            'name' => $user->name,
+                            'avatar' => $profile->picture,
+                            'access_token' => $rand_str,
+                            'token_type' => 'Bearer',
+                            'google_id' => $profile->id
+                        ]
+                    ]);
+                }
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            } else {
+                $user = User::where('email', $profile->email)->first();
+                if ($user) {
+                    return response()->json(['status' => 'error', 'message' => 'Please link your Google account to your Bagou450 account before logging in with Google.'], 500);
+                }
+                $user = new User();
+                $user->email = $profile->email;
+                $user->firstname = $profile->given_name;
+                $user->lastname = $profile->family_name;
+                $user->name = $profile->given_name;
+                $user->save();
+                $newGoogleuser = new UserGoogle();
+                $newGoogleuser->google_id = "$profile->id";
+                $newGoogleuser->user_id = $user->id;
+                $newGoogleuser->avatar = $profile->picture;
+                $newGoogleuser->save();
+                 $rand_str = bin2hex(random_bytes(128));
+                    while (User::where('login_token', '=', $rand_str)->exists()) {
+                        $rand_str = bin2hex(random_bytes(128));
+                    }
+                    $user->login_token = $rand_str;
+                    $user->save();
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => [
+                            'email' => $user->email,
+                            'name' => $user->name,
+                            'avatar' => $profile->picture,
+                            'access_token' => $rand_str,
+                            'token_type' => 'Bearer',
+                            'google_id' => $profile->id,
+                        ]
+                    ]);
+            }
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Unable to know what type of Oauth use.'], 500);
+
+    }
 }

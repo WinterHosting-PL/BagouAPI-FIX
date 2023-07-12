@@ -57,10 +57,14 @@ Route::prefix('client')->group(function () {
             Route::post('/verify', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'sendverificationemail'])->middleware('auth:sanctum');
             Route::get('/isLogged', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'isLogged']);
 
+            //Oauth
+            Route::post('/oauthlogin', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthlogin']);
+            Route::get('/oauthloginCallback', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthloginCallback']);
 
             /* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
                  return 'test';
-             });*/
+
+                   });*/
             
             Route::get('/sendverificationmail', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'verifyemail'])->middleware('auth:sanctum');
     

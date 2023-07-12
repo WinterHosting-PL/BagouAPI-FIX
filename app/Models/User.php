@@ -75,4 +75,8 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserDiscord::class, 'user_id');
     }
+     public function google()
+    {
+        return $this->hasOne(UserGoogle::class, 'user_id');
+    }
 }
