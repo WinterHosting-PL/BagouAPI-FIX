@@ -26,17 +26,21 @@ class TicketController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'subject' => 'required|string|max:64',
-            'logs_url' => 'required|string',
+            'logs_url' => 'nullable|string',
             'message' => 'required|string|max:4000',
             'license' => 'nullable|string',
             'discord_id' => 'nullable|string',
             'discord_user_id' => 'nullable|string',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:2048' // Extensions autorisées et taille maximale de 2MB par fichier
+            'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:8192' // Extensions autorisées et taille maximale de 2MB par fichier
         ]);
-
+        if(!$request->logs_url) {
+            $request->logs_url = '';
+        }
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'message' => 'Invalid data']);
+            $errors = $validator->errors();
+            $firstError = $errors->first();
+            return response()->json(['status' => 'error', 'message' => $firstError], 500);
         }
 
         $user = auth('sanctum')->user();
@@ -44,8 +48,13 @@ class TicketController extends Controller
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
 
-        if($request->discord_user_id) {
+        if($request->discord_user_id && !$user) {
             $user = UserDiscord::where('discord_id', $request->discord_user_id)->first()->user;
+        }
+        if($user) {
+            if(Ticket::where('user_id', $user->id)->where('status', '!=', 'closed')->count() >= 5) {
+                return response()->json(['status' => 'error', 'message' => 'You can\'t open more ticket. Please close others ticket before.'], 500);
+            }
         }
         $license = 'unlicensed';
         if($request->license) {
@@ -66,6 +75,9 @@ class TicketController extends Controller
             }
         } else {
             $ticket->user_id = $user->id;
+            if($user->discord) {
+                $ticket->discord_user_id = $user->discord->discord_id;
+            }
         }
         $ticket->save();
 
@@ -77,7 +89,11 @@ class TicketController extends Controller
 
         } else {
             $message->user_id = $user->id;
+            if($user->discord) {
+                $message->discord_user_id = $user->discord->discord_id;
+            }
         }
+
         $message->content = $request->message;
         $message->position = 1;
         $message->save();
@@ -85,13 +101,18 @@ class TicketController extends Controller
         // Process attachments
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $attachmentFile) {
+
+
                 $attachment = new Attachment();
-                if($request->discord_id && $request->discord_user_id) {
+                if ($request->discord_id && $request->discord_user_id) {
                     $attachment->discord_id = $request->discord_id;
                     $attachment->discord_user_id = $request->discord_user_id;
 
                 } else {
                     $attachment->user_id = $user->id;
+                    if($user->discord) {
+                        $attachment->discord_user_id = $user->discord->discord_id;
+                    }
                 }
                 $attachment->ticket_id = $ticket->id;
                 $attachment->name = $attachmentFile->getClientOriginalName();
@@ -187,7 +208,7 @@ class TicketController extends Controller
             'discord_user_id' => 'nullable|string',
             'discord_id' => 'nullable|string',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:2048' // Extensions autorisées et taille maximale de 2MB par fichier
+            'attachments.*' => 'file|mimes:jpg,png,webp,pdf,html,zip,rar,php,ts,tsx,js,json,mkv,avi,mp4|max:8192' // Extensions autorisées et taille maximale de 2MB par fichier
         ]);
 
 
@@ -350,6 +371,9 @@ class TicketController extends Controller
         if ($user->role === 1) {
             $ticketsQuery = Ticket::query();
         }
+        if($request->search && $request->search !== '') {
+            $ticketsQuery->where('name', 'LIKE', "%$request->search%");
+        }
         switch ($sort) {
             case 'asc_modified':
                 $ticketsQuery->orderBy('updated_at', 'asc');
@@ -370,7 +394,7 @@ class TicketController extends Controller
 
         $tickets = $ticketsQuery->paginate(15, ['*'], 'page', $request->page); // 15 tickets per page, adjust as needed
 
-        return response()->json(['tickets' => $tickets]);
+        return response()->json(['status' => 'success', 'data' => $tickets]);
     }
 
     public function getTicketDetails(Int $id)

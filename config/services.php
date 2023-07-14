@@ -39,7 +39,9 @@ return [
     ],
     'github' => [
         'client_id' => env('GITHUB_CLIENT_ID'),
-        'client_secret' => env('GITHUB_CLIENT_SECRET')
+        'client_secret' => env('GITHUB_CLIENT_SECRET'),
+        'client_link_id' => env('GITHUB_LINK_CLIENT_ID'),
+        'client_link_secret' => env('GITHUB_LINK_CLIENT_SECRET'),
     ],
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
@@ -52,6 +54,7 @@ return [
         'client_id' => env('DISCORD_CLIENT'),
         'client_secret' => env('DISCORD_CLIENT_SECRET'),
         'redirect' => env('DISCORD_OAUTH_REDIRECTION_URL'),
+        'accountredirect' => env('DISCORD_ACCOUNT_REDIRECTION_URL')
     ],
 
 ];

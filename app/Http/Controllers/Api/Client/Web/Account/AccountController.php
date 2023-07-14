@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Client\Web\Account;
  
 use App\Models\Ticket;
 use App\Models\UserDiscord;
+use App\Models\UserGitHub;
+use App\Models\UserGoogle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -61,103 +63,191 @@ class AccountController extends Controller
 
        
     }
-
-    public function discordLogin() {
-        $user = auth('sanctum')->user();
-        if(!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
-        }
-        $clientId = config('services.discord.client');;
-        $redirectUri = config('services.discord.redirection');
-        $scopes = 'identify guilds email guilds.join'; // Les scopes d'autorisation nécessaires, séparés par des espaces
-
-        $discordAuthorizeUrl = 'https://discord.com/api/oauth2/authorize';
-        $queryParams = http_build_query([
-            'client_id' => $clientId,
-            'redirect_uri' => $redirectUri,
-            'response_type' => 'code',
-            'scope' => $scopes,
-        ]);
-        return response()->json(['status' => 'success', 'data' => ['url' => "$discordAuthorizeUrl?$queryParams"]]);
-    }
-    public function discordCallback(Request $request)
+     public function oauthlogin(Request $request)
     {
         $user = auth('sanctum')->user();
-        if(!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
         }
-        $clientId = config('services.discord.client');;
-        $clientSecret = config('services.discord.client_secret');
-        $redirectUri = config('services.discord.redirection');
-        $code = $request->query('code');
-        $scopes = 'identify guilds email guilds.join'; // Les scopes d'autorisation nécessaires, séparés par des espaces
-        $discordTokenUrl = 'https://discord.com/api/oauth2/token';
-        $data = [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'redirect_uri' => $redirectUri,
-            'scope' => $scopes, // Les scopes doivent correspondre à ceux utilisés lors de l'autorisation
-        ];
-        $response = Http::asForm()->post($discordTokenUrl, $data);
-        if ($response->successful()) {
-            $accessToken = $response->json('access_token');
+        $response = '';
+        $redirectUri = config('services.discord.accountredirect') . "?type=$request->type";
+        if ($request->type === 'discord') {
+            $clientId = config('services.discord.client');;
+            $scopes = 'identify email';
+            $discordAuthorizeUrl = 'https://discord.com/api/oauth2/authorize';
+            $queryParams = http_build_query([
+                'client_id' => $clientId,
+                'redirect_uri' => $redirectUri,
+                'response_type' => 'code',
+                'scope' => $scopes,
+            ]);
+            $response = "$discordAuthorizeUrl?$queryParams";
+        }else if ($request->type === 'google') {
+            $response = 'https://accounts.google.com/o/oauth2/auth' .
+                '?client_id=' . config('services.google.client_id') .
+                '&redirect_uri=' . $redirectUri .
+                '&response_type=code' .
+                '&scope=email%20profile';
 
-            // Utilisez l'access token pour récupérer les informations utilisateur
-            $discordUserUrl = 'https://discord.com/api/users/@me';
-            $userInfoResponse = Http::withToken($accessToken)->get($discordUserUrl);
-// Rejoindre le serveur Discord
-           // $inviteCode = 'Qjx7MJNZGz'; // Remplacez par le code d'invitation du serveur Discord
+        }else if ($request->type === 'github') {
+            $response = 'https://github.com/login/oauth/authorize' .
+                '?client_id=' . config('services.github.client_link_id') .
+                '&redirect_uri=' . $redirectUri .
+                '&scope=read:user%20user:email';
+        }
 
-            if ($userInfoResponse->successful()) {
-                $userInfo = $userInfoResponse->json();
-                $guild_ID = config('services.discord.server');
-                $discord_ID = $userInfo['id'];
-                $joinServerUrl = "https://discordapp.com/api/guilds/$guild_ID/members/$discord_ID";
-                $discordtoken = config('services.discord.token');
-                $data = [
-                    "access_token" => $accessToken
-                ];
-                $join = Http::withHeaders([
-                    'Authorization' => "Bot $discordtoken",
-                    'Content-Type' => 'application/json'
-                ])->put($joinServerUrl, $data);
-                if ($join->successful()) {
-                    $userDiscord = new UserDiscord();
-                    $userDiscord->discord_id = $userInfo['id'];
-                    $userDiscord->user_id = $user->id;
-                    $userDiscord->username = $userInfo['username'];
-                    $userDiscord->avatar = $userInfo['avatar'];
-                    $userDiscord->discriminator = $userInfo['discriminator'];
-                    $userDiscord->email = $userInfo['email'];
+        return response()->json(['status' => 'success', 'data' => ['url' => "$response"]]);
+    }
+     public function oauthloginCallback(Request $request)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
+        }
+                    $redirectUri = config('services.discord.accountredirect') . "?type=$request->type";
 
-                    $userDiscord->save();
-                    Ticket::where('discord_user_id', $userInfo['id'])->update(['user_id' => $user->id]);
-                    return response()->json(['status' => 'success']);
+               if ($request->type === 'discord') {
+            $clientId = config('services.discord.client');;
+            $clientSecret = config('services.discord.client_secret');
+            $code = $request->token;
+            $scopes = 'identify email';
+            $discordTokenUrl = 'https://discord.com/api/oauth2/token';
+            $data = [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'redirect_uri' => $redirectUri,
+                'scope' => $scopes, // Les scopes doivent correspondre à ceux utilisés lors de l'autorisation
+            ];
+            $response = Http::asForm()->post($discordTokenUrl, $data);
 
+            if ($response->successful()) {
+                $accessToken = $response->json('access_token');
+                // Utilisez l'access token pour récupérer les informations utilisateur
+                $discordUserUrl = 'https://discord.com/api/users/@me';
+                $userInfoResponse = Http::withToken($accessToken)->get($discordUserUrl);
+                if ($userInfoResponse->successful()) {
+
+                    $userInfo = $userInfoResponse->json();
+                    $discordId = $userInfo['id'];
+                    $userDiscord = UserDiscord::where('discord_id', $discordId)->first();
+                    if ($userDiscord) {
+                        //Compte Discord déja liée.
+                        return response()->json(['status' => 'error', 'message' => 'This Discord account is already link!'], 500);
+                    } else {
+                        $discriminator =  $userInfo['discriminator'];
+                        $newDiscorduser = new UserDiscord();
+                        $newDiscorduser->discord_id = "$discordId";
+                        $newDiscorduser->username = $userInfo['username'];
+                        $newDiscorduser->email = $userInfo['email'];
+                        $newDiscorduser->discriminator = "$discriminator";
+                        $newDiscorduser->user_id = $user->id;
+                        $newDiscorduser->avatar = $userInfo['avatar'];
+                        $newDiscorduser->save();
+                        return response()->json(['status' => 'success']);
+                    }
                 }
             }
-
+            return response()->json(['status' => 'error', 'message' => 'Unable to retrieve user information from Discord'], 500);
 
         }
+        if ($request->type === 'google') {
+            $response = Http::post('https://oauth2.googleapis.com/token', [
+                'code' => $request->token,
+                'client_id' => config('services.google.client_id'),
+                'client_secret' => config('services.google.client_secret'),
+                'redirect_uri' => $redirectUri,
+                'grant_type' => 'authorization_code',
+            ])->object();
+            if (isset($response->error) || !isset($response->access_token)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
 
-        return response()->json(['error' => 'Unable to retrieve user information from Discord'], 500);
+            $accessToken = $response->access_token;
+            $profile = Http::get('https://www.googleapis.com/oauth2/v2/userinfo', [
+                'access_token' => $accessToken,
+            ])->object();
+            $userGoogle = UserGoogle::where('google_id', "$profile->id")->first();
+            if ($userGoogle) {
+                return response()->json(['status' => 'error', 'message' => 'This Google account is already link!'], 500);
+            }else {
+                $newGoogleuser = new UserGoogle();
+                $newGoogleuser->google_id = "$profile->id";
+                $newGoogleuser->user_id = $user->id;
+                $newGoogleuser->username = $profile->name;
+                $newGoogleuser->avatar = $profile->picture;
+                $newGoogleuser->save();
+                return response()->json([
+                    'status' => 'success'
+                ]);
+            }
+        }
+        if ($request->type === 'github') {
+            $response = Http::withHeaders(['Accept' => 'application/json'])->post('https://github.com/login/oauth/access_token', [
+                'code' => $request->token,
+                'client_id' => config('services.github.client_link_id'),
+                'client_secret' => config('services.github.client_link_secret'),
+                'redirect_uri' => $redirectUri
+            ])->object();
+
+            if (!isset($response->access_token)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+            $accessToken = $response->access_token;
+            $profile = Http::withHeaders([
+                'Authorization' => "Bearer $response->access_token",
+            ])->get('https://api.github.com/user')->object();
+            if (!isset($profile->id)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+            $userGithub = UserGitHub::where('github_id', "$profile->id")->first();
+            if ($userGithub) {
+                return response()->json(['status' => 'error', 'message' => 'This Github account is already link!'], 500);
+            }
+            $newGithubuser = new UserGitHub();
+            $newGithubuser->github_id = "$profile->id";
+            $newGithubuser->user_id = $user->id;
+            $newGithubuser->username = $profile->login;
+            $newGithubuser->avatar = $profile->avatar_url;
+            $newGithubuser->plan = $profile->plan->name;
+            $newGithubuser->save();
+             return response()->json([
+                    'status' => 'success'
+                ]);
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Unable to know what type of Oauth use.'], 500);
+
     }
-    public function getDiscordUser(Request $request) {
+    public function deleteOauthLogin(Request $request) {
         $user = auth('sanctum')->user();
-        if(!$user) {
-            return response()->json(['status' => 'error', 'message' => 'Unauthenticated'], 500);
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
         }
-        $discordUser = $user->discord;
-        $avatarLink = "https://cdn.discordapp.com/avatars/$discordUser->discord_id/$discordUser->avatar";
-
-
-        return response()->json(['status' => 'success', 'data' => [
-            'username' => $discordUser->username,
-            'discriminator' => $discordUser->discriminator,
-            'avatar' => $avatarLink
-        ]]);
+        if(!$request->type) {
+            return response()->json(['status' => 'error', 'message' => 'You need to provide a Oauth type!.'], 500);
+        }
+        $type = $request->type;
+        if($type === 'google') {
+            UserGoogle::where('user_id', $user->id)->delete();
+            return response()->json([
+                'status' => 'success'
+            ]);
+        }
+        if($type === 'github') {
+            UserGitHub::where('user_id', $user->id)->delete();
+            return response()->json([
+                'status' => 'success'
+            ]);
+        }
+        if($type === 'discord') {
+            UserDiscord::where('user_id', $user->id)->delete();
+            return response()->json([
+                'status' => 'success'
+            ]);
+        }
+        return response()->json(['status' => 'error', 'message' => 'Unable to know what type of Oauth use.'], 500);
 
     }
 }

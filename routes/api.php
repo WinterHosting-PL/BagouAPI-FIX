@@ -42,8 +42,6 @@ Route::prefix('client')->group(function () {
                 Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
                 Route::get('/', [TicketController::class, 'getTicketList']);
                 Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
-                Route::post('/filter', [TicketController::class, 'filterTickets']);
-                Route::post('/search', [TicketController::class, 'searchTickets']);
                 Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
                 Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
         });
@@ -75,8 +73,14 @@ Route::prefix('client')->group(function () {
             Route::get('/discord/callback', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'discordCallback']);
             Route::get('/discord/get', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getDiscordUser']);
 
+
             Route::post('/edit', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'edit'])->middleware('auth:sanctum');
             Route::post('/editinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'editinfos'])->middleware('auth:sanctum');
+            //Oauth
+
+            Route::post('/oauth', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'oauthlogin']);
+            Route::delete('/oauth', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'deleteOauthLogin']);
+            Route::get('/oauthCallback', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'oauthloginCallback']);
 
         });
         Route::group(['prefix' => 'orders', 'middleware' => ['auth:sanctum']], function () {

@@ -57,7 +57,7 @@
 </head>
 <body>
 <div class="invoice-header">
-    <img src="https://cdn.bagou450.com/assets/img/logo_full_colored.png" alt="Logo" class="invoice-logo">
+    <img src="https://cdn.bagou450.com/assets/img/logo_full_colored.webp" alt="Logo" class="invoice-logo">
     <div class="invoice-info">
         <p>Invoice ID: {{$invoice_number}}</p>
         <p>Invoice date: {{$invoice_date}}</p>
@@ -100,8 +100,8 @@
                 <td>{{$item['description']}}</td>
                 <td>{{$item['quantity']}}</td>
                 <td>{{$item['price']}}€</td>
-                <td>{{number_format(0.35, 2)}}€</td>
-                <td>{{number_format($item['price'] + 0.35, 2)}}€</td>
+                <td>{{ $item['price'] == 0 ? '0€' : number_format(0.35, 2).'€' }}</td>
+                <td>{{ $item['price'] == 0 ? $item['price'].'€' : number_format($item['price'] + 0.35, 2).'€' }}</td>
             </tr>
         @endforeach
     </tbody>

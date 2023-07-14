@@ -45,7 +45,7 @@ class Orders extends Model
         'products' => 'array',
         'stripe_id' => 'string',
         'status' => 'string',
-        'price' => 'integer',
+        'price' => 'float',
         'token' => 'string',
         'checkout' => 'string'
     ];

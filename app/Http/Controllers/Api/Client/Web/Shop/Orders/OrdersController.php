@@ -368,6 +368,7 @@ class OrdersController extends BaseController
         }
         $status = $order->status;
         // Création du PDF de la facture
+
         $pdf = PDF::loadView('invoices.invoice', compact('invoice_number', 'invoice_date', 'due_date', 'customer', 'items', 'status'));
         $pdf->setPaper('A4', 'portrait');
 

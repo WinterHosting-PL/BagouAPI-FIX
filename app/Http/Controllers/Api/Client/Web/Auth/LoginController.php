@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Client\Web\Auth;
 
 use App\Models\UserDiscord;
+use App\Models\UserGitHub;
 use App\Models\UserGoogle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -157,24 +158,50 @@ class LoginController extends Controller
     {
         $user = auth('sanctum')->user();
         if ($user) {
-            $discord_avatar = null;
-            $discord_username = null;
-            $discord_discriminator = null;
+            if (!$request->infos) {
+                return response()->json([
+                    'status' => true, 'data' => ['email' => $user->email,
+                        'name' => $user->name,
+                        'role' => $user->role]
+                ], 200);
+            }
+
+            $discordUser = array('status' => !!$user->discord);
             if ($user->discord) {
-                $discordUser = $user->discord;
-                $discord_avatar = "https://cdn.discordapp.com/avatars/$discordUser->discord_id/$discordUser->avatar";
-                $discord_username = $discordUser->username;
-                $discord_discriminator = $discordUser->discriminator;
+                $aa = $user->discord;
+                $discord_avatar = "https://cdn.discordapp.com/avatars/$aa->discord_id/$aa->avatar";
+                $discord_username = $aa->username;
+                $discord_discriminator = $aa->discriminator;
+                $discordUser['data'] = array(
+                    'avatar' => $discord_avatar,
+                    'username' => $discord_username,
+                    'discriminator' => $discord_discriminator
+                );
+            }
+            $googleUser = array('status' => !!$user->google);
+            if ($user->google) {
+                $googleUser['data'] = array(
+                    'avatar' => $user->google->avatar,
+                    'username' => $user->google->username
+                );
+            }
+            $githubUser = array('status' => !!$user->github);
+            if ($user->github) {
+                $githubUser['data'] = array(
+                    'avatar' => $user->github->avatar,
+                    'username' => $user->github->username,
+                    'plan' => $user->github->plan
+                );
             }
             return response()->json([
                 'status' => true, 'data' => ['email' => $user->email,
                     'name' => $user->name,
                     'role' => $user->role,
-                    'verified' => $user->email_verified_at !== null ? true : false,
-                    'discord_username' => $discord_username,
-                    'discord_discriminator' => $discord_discriminator,
-                    'discord_avatar' => $discord_avatar]
-            ], 200);
+                    'verified' => true,
+                    'discord' => $discordUser,
+                    'google' => $googleUser,
+                    'github' => $githubUser
+                ]], 200);
 
         }
         return response()->json([
@@ -210,6 +237,11 @@ class LoginController extends Controller
                 '&response_type=code' .
                 '&scope=email%20profile';
 
+        } else if ($request->type === 'github') {
+            $response = 'https://github.com/login/oauth/authorize' .
+                '?client_id=' . config('services.github.client_id') .
+                '&redirect_uri=' . $redirectUri .
+                '&scope=read:user%20user:email';
         }
 
         return response()->json(['status' => 'success', 'data' => ['url' => "$response"]]);
@@ -224,7 +256,7 @@ class LoginController extends Controller
         if ($request->type === 'discord') {
             $clientId = config('services.discord.client');;
             $clientSecret = config('services.discord.client_secret');
-            $redirectUri = config('services.discord.oauth_redirection');
+            $redirectUri = config('services.discord.redirect') . "?type=$request->type";
             $code = $request->token;
             $scopes = 'identify email';
             $discordTokenUrl = 'https://discord.com/api/oauth2/token';
@@ -237,34 +269,76 @@ class LoginController extends Controller
                 'scope' => $scopes, // Les scopes doivent correspondre à ceux utilisés lors de l'autorisation
             ];
             $response = Http::asForm()->post($discordTokenUrl, $data);
+
             if ($response->successful()) {
                 $accessToken = $response->json('access_token');
-
                 // Utilisez l'access token pour récupérer les informations utilisateur
                 $discordUserUrl = 'https://discord.com/api/users/@me';
                 $userInfoResponse = Http::withToken($accessToken)->get($discordUserUrl);
                 if ($userInfoResponse->successful()) {
+
                     $userInfo = $userInfoResponse->json();
                     $discordId = $userInfo['id'];
-                    $userDiscord = UserDiscord::where('discord_id', $userInfo['id'])->firstOrFail();
-                    $user = User::where('id', $userDiscord->user_id)->firstOrFail();
-                    $rand_str = bin2hex(random_bytes(128));
-                    while (User::where('login_token', '=', $rand_str)->exists()) {
+                    $userDiscord = UserDiscord::where('discord_id', $discordId)->first();
+                    if ($userDiscord) {
+                        //Compte Discord déja liée.
+                        $user = User::where('id', $userDiscord->user_id)->first();
+                        if ($user) {
+                            $rand_str = bin2hex(random_bytes(128));
+                            while (User::where('login_token', '=', $rand_str)->exists()) {
+                                $rand_str = bin2hex(random_bytes(128));
+                            }
+                            $user->login_token = $rand_str;
+                            $user->save();
+                            return response()->json([
+                                'status' => 'success',
+                                'data' => [
+                                    'email' => $user->email,
+                                    'name' => $user->name,
+                                    'avatar' => $userDiscord->avatar,
+                                    'access_token' => $rand_str,
+                                    'token_type' => 'Bearer',
+                                    'discord_id' => $userDiscord->discord_id
+                                ]
+                            ]);
+                        }
+                        return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+                    } else {
+                        $user = User::where('email', $userInfo['email'])->first();
+                        if ($user) {
+                            return response()->json(['status' => 'error', 'message' => 'Please link your Discord account to your Bagou450 account before logging in with Discord.'], 500);
+                        }
+                        $user = new User();
+                        $user->email = $userInfo['email'];
+                        $user->name = $userInfo['username'];
+                        $user->save();
+                        $discriminator =  $userInfo['discriminator'];
+                        $newDiscorduser = new UserDiscord();
+                        $newDiscorduser->discord_id = "$discordId";
+                        $newDiscorduser->username = $userInfo['username'];
+                        $newDiscorduser->email = $userInfo['email'];
+                        $newDiscorduser->discriminator = "$discriminator";
+                        $newDiscorduser->user_id = $user->id;
+                        $newDiscorduser->avatar = 'https://cdn.discordapp.com/avatars/' . $discordId . '/' . $userInfo['avatar'] . '.png';
+                        $newDiscorduser->save();
                         $rand_str = bin2hex(random_bytes(128));
+                        while (User::where('login_token', '=', $rand_str)->exists()) {
+                            $rand_str = bin2hex(random_bytes(128));
+                        }
+                        $user->login_token = $rand_str;
+                        $user->save();
+                        return response()->json([
+                            'status' => 'success',
+                            'data' => [
+                                'email' => $user->email,
+                                'name' => $user->name,
+                                'avatar' => $newDiscorduser->avatar,
+                                'access_token' => $rand_str,
+                                'token_type' => 'Bearer',
+                                'discord_id' => $newDiscorduser->discord_id,
+                            ]
+                        ]);
                     }
-                    $user->login_token = $rand_str;
-                    $user->save();
-                    return response()->json([
-                        'status' => 'success',
-                        'data' => [
-                            'email' => $user->email,
-                            'name' => $user->name,
-                            'avatar' => $userDiscord->avatar,
-                            'access_token' => $rand_str,
-                            'token_type' => 'Bearer',
-                            'discord_id' => $userInfo['id']
-                        ]
-                    ]);
                 }
             }
             return response()->json(['status' => 'error', 'message' => 'Unable to retrieve user information from Discord'], 500);
@@ -279,7 +353,7 @@ class LoginController extends Controller
                 'redirect_uri' => $redirectUri,
                 'grant_type' => 'authorization_code',
             ])->object();
-            if(isset($response->error) || !isset($response->access_token)) {
+            if (isset($response->error) || !isset($response->access_token)) {
                 return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
             }
 
@@ -324,10 +398,54 @@ class LoginController extends Controller
                 $user->save();
                 $newGoogleuser = new UserGoogle();
                 $newGoogleuser->google_id = "$profile->id";
+                $newGoogleuser->username = $profile->name;
                 $newGoogleuser->user_id = $user->id;
                 $newGoogleuser->avatar = $profile->picture;
                 $newGoogleuser->save();
-                 $rand_str = bin2hex(random_bytes(128));
+                $rand_str = bin2hex(random_bytes(128));
+                while (User::where('login_token', '=', $rand_str)->exists()) {
+                    $rand_str = bin2hex(random_bytes(128));
+                }
+                $user->login_token = $rand_str;
+                $user->save();
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'email' => $user->email,
+                        'name' => $user->name,
+                        'avatar' => $profile->picture,
+                        'access_token' => $rand_str,
+                        'token_type' => 'Bearer',
+                        'google_id' => $profile->id,
+                    ]
+                ]);
+            }
+        }
+        if ($request->type === 'github') {
+            $redirectUri = config('services.discord.redirect') . "?type=github";
+            $response = Http::withHeaders(['Accept' => 'application/json'])->post('https://github.com/login/oauth/access_token', [
+                'code' => $request->token,
+                'client_id' => config('services.github.client_id'),
+                'client_secret' => config('services.github.client_secret'),
+                'redirect_uri' => $redirectUri
+            ])->object();
+
+            if (!isset($response->access_token)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+            $accessToken = $response->access_token;
+            $profile = Http::withHeaders([
+                'Authorization' => "Bearer $response->access_token",
+            ])->get('https://api.github.com/user')->object();
+            if (!isset($profile->id)) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+            $userGithub = UserGitHub::where('github_id', "$profile->id")->first();
+            if ($userGithub) {
+                //Compte GitHub déja liée.
+                $user = User::where('id', $userGithub->user_id)->first();
+                if ($user) {
+                    $rand_str = bin2hex(random_bytes(128));
                     while (User::where('login_token', '=', $rand_str)->exists()) {
                         $rand_str = bin2hex(random_bytes(128));
                     }
@@ -338,16 +456,62 @@ class LoginController extends Controller
                         'data' => [
                             'email' => $user->email,
                             'name' => $user->name,
-                            'avatar' => $profile->picture,
+                            'avatar' => $profile->avatar_url,
                             'access_token' => $rand_str,
                             'token_type' => 'Bearer',
-                            'google_id' => $profile->id,
+                            'github_id' => $profile->id
                         ]
                     ]);
+                }
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
             }
+            $githubEmail = Http::withHeaders([
+                'Authorization' => "Bearer $response->access_token",
+            ])->get('https://api.github.com/user/emails')->json();
+            if (!isset($githubEmail[0]['email'])) {
+                return response()->json(['status' => 'error', 'message' => 'An unexcepted error happend.'], 500);
+            }
+            $counter = 0;
+            while (!$githubEmail[$counter]['primary']) {
+                $counter++;
+                if (!isset($githubEmail[$counter])) {
+                    return response()->json(['status' => 'error', 'message' => 'Can\'t find any primary email adress on this Github account.'], 500);
+                }
+            }
+            $githubEmail = !$githubEmail[$counter]['email'];
+            if (User::where('email', $githubEmail)->exists()) {
+                return response()->json(['status' => 'error', 'message' => 'Please link your Github account to your Bagou450 account before logging in with Github.'], 500);
+            }
+            $user = new User();
+            $user->email = $githubEmail;
+            $user->name = $profile->login;
+            $user->save();
+            $newGithubuser = new UserGitHub();
+            $newGithubuser->github_id = "$profile->id";
+            $newGithubuser->user_id = $user->id;
+            $newGithubuser->username = $profile->login;
+            $newGithubuser->avatar = $profile->avatar_url;
+            $newGithubuser->plan = $profile->plan->name;
+            $newGithubuser->save();
+            $rand_str = bin2hex(random_bytes(128));
+            while (User::where('login_token', '=', $rand_str)->exists()) {
+                $rand_str = bin2hex(random_bytes(128));
+            }
+            $user->login_token = $rand_str;
+            $user->save();
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'avatar' => $profile->avatar_url,
+                    'access_token' => $rand_str,
+                    'token_type' => 'Bearer', 'google_id' => $profile->id,
+                ]]);
         }
 
         return response()->json(['status' => 'error', 'message' => 'Unable to know what type of Oauth use.'], 500);
 
     }
+
 }

@@ -79,4 +79,8 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserGoogle::class, 'user_id');
     }
+     public function github()
+    {
+        return $this->hasOne(UserGitHub::class, 'user_id');
+    }
 }

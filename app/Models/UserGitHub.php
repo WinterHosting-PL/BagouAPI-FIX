@@ -5,17 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class UserGoogle extends Model
+class UserGitHub extends Model
 {
     use HasFactory;
 
-    protected $table = 'users_google';
+    protected $table = 'users_github';
 
     protected $fillable = [
         'user_id',
-        'google_id',
+        'github_id',
+        'avatar',
         'username',
-        'avatar'
+        'plan'
     ];
 
     public $timestamps = true;
