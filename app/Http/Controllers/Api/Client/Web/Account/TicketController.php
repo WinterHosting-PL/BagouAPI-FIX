@@ -329,34 +329,64 @@ class TicketController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    public function getMessages($id)
-    {
-        $ticket = Ticket::findOrFail($id);
+public function getMessages(Request $request, $id)
+{
+    $ticket = Ticket::findOrFail($id);
 
-        $user = auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
-        }
-        if ($user->id !== $ticket->user_id && $user->role !== 1) {
-            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
-        }
-        $messages = $ticket->messages->map(function ($message) {
-            $messageuser = "Discord User";
-
-            if($message->user_id) {
-                $messageuser = User::findOrFail($message->user_id);
-                $messageuser = $messageuser->firstname . ' ' . $messageuser->lastname;
-
-            }
-            return [
-                'position' => $message->position,
-                'user' => $messageuser,
-                'message' => $message->content,
-            ];
-        });
-
-        return response()->json(['messages' => $messages]);
+    $user = auth('sanctum')->user();
+    if (!$user) {
+        return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
     }
+    if ($user->id !== $ticket->user_id && $user->role !== 1) {
+        return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+    }
+
+    $perPage = $request->input('perPage', 10); // Nombre de messages par page, par défaut 10
+    $page = $request->input('page', 1); // Numéro de la page, par défaut 1
+
+    $pagination = $ticket->messages()
+        ->with('user') // Charger les utilisateurs associés aux messages
+        ->orderBy('created_at', 'asc') // Messages les plus anciens en premier
+        ->paginate($perPage, ['*'], 'page', $page);
+
+    $messages = $pagination->items();
+     $formattedMessages = array();
+     foreach($messages as $message) {
+          $messageUser = $message->user;
+
+          if(!$messageUser) {
+              $messageUser = UserDiscord::where('id', $message->discord_user_id)->first();
+              $messageUser = User::where('user_id', $messageUser->user_id)->first();
+          }
+        $firstName = $messageUser ? $messageUser->firstname : 'User';
+        $lastName = $messageUser ? $messageUser->lastname : 'Discord';
+
+        $formattedMessages[] = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'message' => $message->content,
+            'created_at' => $message->created_at,
+            'discord_user_id' => $message->discord_user_id,
+            'own' => $messageUser->id === $user->id,
+            'role' => $messageUser->role ? $messageUser->role : 0
+        ];
+     }
+
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'page' => $pagination->currentPage(),
+            'totalPage' => $pagination->lastPage(),
+            'perPage' => $perPage,
+            'messages' => $formattedMessages,
+        ],
+    ]);
+}
+
+
+
+
 
     public function getTicketList(Request $request)
     {
@@ -407,7 +437,6 @@ class TicketController extends Controller
         if ($user->role !== 1 && $user->id !== $ticket->user_id) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
-        $messages = $ticket->messages()->with('user')->get();
         $attachments = [];
         if($ticket->attachement) {
             $attachments = $ticket->attachement->map(function ($attachment) {
@@ -420,7 +449,7 @@ class TicketController extends Controller
         }
 
 
-        return response()->json(['ticket' => $ticket, 'messages' => $messages, 'attachments' => $attachments]);
+        return response()->json(['status' => 'success', 'data' => ['ticket' => $ticket, 'attachments' => $attachments]]);
     }
 
     public function assignTicket(Request $request)
@@ -498,9 +527,13 @@ class TicketController extends Controller
         return response()->json(['tickets' => $tickets]);
     }
 
-    public function downloadAttachment($attachmentId)
+    public function downloadAttachment(int $attachmentId)
     {
-        $attachment = Attachment::findOrFail($attachmentId);
+
+        $attachment = Attachment::where('id', $attachmentId)->first();
+        if(!$attachment) {
+            return response()->json(['status' => 'error', 'message' => 'Can\'t find asked file.'], 401);
+        }
         $ticket = $attachment->ticket;
         $user = auth('sanctum')->user();
         if (!$user || ($user->id !== $ticket->user_id && $user->role !== 1)) {

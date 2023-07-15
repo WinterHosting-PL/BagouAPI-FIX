@@ -35,6 +35,12 @@ Route::prefix('client')->group(function () {
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
             });
         });
+        // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!! // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
         Route::prefix('tickets')->group(function () {
                 Route::post('/', [TicketController::class, 'createTicket']);
                 Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
