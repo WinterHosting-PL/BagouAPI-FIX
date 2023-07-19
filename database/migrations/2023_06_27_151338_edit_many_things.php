@@ -36,7 +36,6 @@ return new class extends Migration
         });
 
         Schema::table('licenses', function (Blueprint $table) {
-            $table->dropColumn('name');
             $table->dropColumn('fullname');
             $table->integer('product_id')->unsigned();
             $table->foreign('product_id')

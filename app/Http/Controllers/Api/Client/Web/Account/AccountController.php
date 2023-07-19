@@ -9,6 +9,7 @@ use App\Models\UserGoogle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Routing\Controller;
 use App\Models\User;
@@ -26,7 +27,16 @@ class AccountController extends Controller
 {
     public function edit(Request $request): \Illuminate\Http\JsonResponse {
         $user = auth('sanctum')->user();
-        User::where('id', '=', $user->id)->update(['email' => $request->email]);
+        $validator = Validator::make($request->all(), [
+            'name' => 'string',
+            'email' => 'string'
+        ]);
+         if ($validator->fails()) {
+            $errors = $validator->errors();
+            $firstError = $errors->first();
+            return response()->json(['status' => 'error', 'message' => $firstError], 500);
+        }
+        User::where('id', '=', $user->id)->update(['email' => $request->email, 'name' => $request->name]);
 
         return response()->json(['status' => 'success', 'message' => 'Account credentials successfully updated'], 200);
     }

@@ -42,6 +42,8 @@ class User extends Authenticatable
         'login_token' => 'string'
     ];
 
+
+
     /**
     * Always encrypt the password when it is updated.
     *

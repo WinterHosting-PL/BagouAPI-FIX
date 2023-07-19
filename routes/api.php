@@ -1,8 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminBlogController;
+use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminCategoryController;
+use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
+use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
 use App\Http\Controllers\ClientController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\FacadesRoute;
 use App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController;
 use App\Http\Controllers\Api\Client\Web\Admin\Products\ProductsController;
 use App\Http\Controllers\Api\Client\Web\Account\TicketController;
@@ -27,7 +31,28 @@ Route::prefix('client')->group(function () {
             Route::get('/getone', [App\Http\Controllers\Api\Client\Web\AddonsController::class, 'getone']);
 
         });
+        // Routes pour les blogs
+        Route::get('blogs', [BlogController::class, 'index']);
+        Route::get('blogs/{blog}', [BlogController::class, 'get']);
+
+        // Routes pour les catégories
+        Route::get('categories', [CategoryController::class, 'index']);
+        Route::get('categories/{category}', [CategoryController::class, 'get']);
+
         Route::prefix('admin')->group(function () {
+            // Routes pour les blogs
+            Route::prefix('blogs')->group(function () {
+                Route::post('/', [AdminBlogController::class, 'create']);
+                Route::post('/{blog}', [AdminBlogController::class, 'edit']);
+                Route::delete('/{blog}', [AdminBlogController::class, 'remove']);
+            });
+
+            // Routes pour les catégories
+            Route::prefix('categories')->group(function () {
+                Route::post('/', [AdminCategoryController::class, 'create']);
+                Route::put('/{category}', [AdminCategoryController::class, 'edit']);
+                Route::delete('/{category}', [AdminCategoryController::class, 'remove']);
+            });
             Route::prefix('products')->group(function () {
                 Route::get('/', [ProductsController::class, 'listProducts']);
                 Route::post('/', [ProductsController::class, 'createProduct']);
@@ -126,9 +151,9 @@ Route::prefix('client')->group(function () {
     Route::get('/getVersion', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getVersion']);
     
     Route::get('/checkIfExist', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkIfExist']);
-    //Cloud Servers
-    Route::get('/checklicenseCloudServers', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checklicense']);
+    Route::get('/checklicense', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checklicense']);
 
+    Route::post('/license', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getLicense']);
 
 
     

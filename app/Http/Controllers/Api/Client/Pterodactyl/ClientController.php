@@ -2,252 +2,244 @@
 
 namespace App\Http\Controllers\Api\Client\Pterodactyl;
 
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Bus\DispatchesJobs;
-use Illuminate\Foundation\Validation\ValidatesRequests;
-use Illuminate\Routing\Controller as BaseController;
+use App\Services\LicenseService;
+use Illuminate\Http\File;
+use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\License;
 use App\Models\Products;
+
 use Config;
-class ClientController extends BaseController
+use Illuminate\Support\Facades\Validator;
+
+class ClientController extends Controller
 {
+    protected $licenseService;
 
-    public function checkLicense(string $transaction, string $id, string $ip) {
-        return response()->json([
-            'message' => 'Good.'
-        ], 200);
-        $license = License::where("transaction", '=', $transaction)->first();
-        if (!$license) {
-           // return true;
+    public function __construct(LicenseService $licenseService)
+    {
+        $this->licenseService = $licenseService;
+
+    }
+
+
+    public function checkLicense(string $transaction , string $id , string $ip)
+    {
+
+        $result = $this->licenseService->checkLicense($transaction , $id , $ip , true);
+        if ($result === 'SUCCESS') {
+            return [
+                'message' => 'done' ,
+                'name' => '585' ,
+                'fullname' => 'Cloud Servers' ,
+                'blacklisted' => false
+            ];
+        } else {
             return response()->json([
+                'message' => $result
+            ] , 400);
+        };
+    }
+
+    public function getLicense(Request $request)
+    {
+        $validator = Validator::make($request->all() , [
+            'id' => 'required' ,
+            'name' => 'required' ,
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid data provided.' ,
+                'errors' => $validator->errors() ,
+            ] , 400);
+        }
+        $result = $this->licenseService->getDetails($request->id , $request->name , $request->ip() , false , true);
+        switch ($result) {
+            case LicenseService::LICENSE_NOT_FOUND:
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'No license found.'
+                ] , 404);
+
+            case LicenseService::BLACKLISTED:
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'User blacklisted.'
+                ] , 404);
+
+            case LicenseService::NO_ADDON:
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'Not the good addon.'
+                ] , 404);
+
+            case LicenseService::TOO_MANY_USAGE:
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'Too many usage.'
+                ] , 400);
+
+            default:
+                if ($this->licenseService->incrementUsage($request->id , $request->ip())) {
+                    return array(
+                        'status' => 'success' ,
+                        'message' => 'done' ,
+                        'name' => $result->product_id ,
+                        'license' => $result->license ,
+                        'blacklisted' => $result->blacklisted ,
+                        'usage' => $result->usage ,
+                        'maxusage' => $result->maxusage ,
+                        'version' => Products::where('id' , '=' , $result->name)->firstOrFail()['version']
+                    );
+                }
+
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'Can\'t add the usage.'
+                ] , 400);
+        }
+    }
+
+    public function getVersion(Request $request)
+    {
+        $validator = Validator::make($request->all() , [
+            'id' => 'required'
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid data provided.' ,
+                'errors' => $validator->errors() ,
+            ] , 400);
+        }
+        $version = $this->licenseService->getVersion($request->id);
+        if ($version === null) {
+            return response()->json([
+                'status' => 'error' ,
+                'message' => 'Unknown license.'
+            ] , 404);
+        } else {
+            return response()->json([
+                'status' => 'success' ,
+                'version' => $version
+            ] , 200);
+        }
+    }
+
+    public function deleteLicense(Request $request)
+    {
+        $validator = Validator::make($request->all() , [
+            'id' => 'required' ,
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid data provided.' ,
+                'errors' => $validator->errors() ,
+            ] , 400);
+        }
+        $result = $this->licenseService->decrementUsage($request->id);
+        if ($result === LicenseService::LICENSE_NOT_FOUND) {
+            return response()->json([
+                'status' => 'error' ,
                 'message' => 'License not found.'
-            ], 418);;
-        } else {
-            $key = config('api.key');
-
-            if($license->blacklisted) {
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            }
-            
-
-    
-                if($id !== $license->name) {
-                    return response()->json([
-                        'message' => 'Not the good addon.'
-                    ], 400);
-                }
-                if(!in_array($ip,$license->ip)) {
-                    return response()->json([
-                        'message' => 'This ip is not allowed.'
-                    ], 400);
-                }
-                return response()->json([
-                    'message' => 'Good.'
-                ], 200);
-            
+            ] , 404);
+        } elseif ($result === LicenseService::USAGE_CANNOT_DECREMENT) {
+            return response()->json([
+                'status' => 'error' ,
+                'message' => 'Cannot decrement license usage.'
+            ] , 400);
+        } elseif ($result === LicenseService::USAGE_DECREMENTED) {
+            return response()->json([
+                'status' => 'success' ,
+                'message' => 'License usage decremented successfully.'
+            ] , 200);
         }
     }
-    public function getLicense(Request $request) {
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            return $this->addtodb($request);
-        } else {
-            $key = config('api.key');
 
-            if($addon->blacklisted) {
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            }
-           
-                if($request->selectaddon !== strval($addon->name)) {
-                    return response()->json([
-                        'message' => 'Not the good addon.'
-                    ], 400);
-                }
-                if($addon->usage+1 > $addon->maxusage) {
-                    return response()->json([
-                        'message' => 'Too many usage.'
-                    ], 400);
-                }
-                
-                License::where("transaction", '=', $request->id)->update(["usage" => $addon->usage+1, "version" => Products::where('id', '=', $addon->name)->firstOrFail()['version'], 'ip' => array_push(License::where("transaction", '=', $request->id)->firstOrFail()['ip'], [$request->ip()])]);
-                
-                return array("message" => "done", "name" => $addon->name, "fullname" => $addon->fullname, "buyer" => $addon->buyer, "transaction" => $addon->transaction, "blacklisted" => $addon->blacklisted, "usage" => $addon->usage, "maxusage" => $addon->maxusage, "ip" => $addon->ip, "version" => Products::where('id', '=', $addon->name)->firstOrFail()['version']);
-            
+    public function getAutoInstaller(Request $request)
+    {
+        $validator = Validator::make($request->all() , [
+            'id' => 'required' ,
+            'selectaddon' => 'required' ,
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid data provided.' ,
+                'errors' => $validator->errors() ,
+            ] , 400);
         }
-        
-    }
-    public function getVersion(Request $request) {
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            return response()->json([
-                'message' => 'Unknow license.'
-            ], 400);
-        } else {
-            $version = Products::where('id', '=', $addon->name)->firstOrFail();
-            return array("version" => $version['version']);
-            
-        }
-    }
-    public function deleteLicense(Request $request) {
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            return response()->json([
-                'message' => 'Products not found.'
-            ], 400);
-        } 
-        if ($addon->usage < 1) {
-            return response()->json([
-                'message' => 'Products not used.'
-            ], 400);
-        } 
-        License::where("transaction", '=', $request->id)->update(["usage" => $addon->usage-1]);
-        return response()->json([
-            'message' => 'Done.'
-        ], 200);
-    }
-    public function getAutoInstaller(Request $request) {
+        $result = $this->licenseService->checkLicense($request->id , $request->selectaddon , $request->ip() , false);
+        if ($result === 'SUCCESS') {
+            $autoInstallerPath = storage_path("../autoinstaller/$request->selectaddon.json");
 
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            return $this->addtodb($request);
-        } else {
-            $key = config('api.key');
+            if (File::exists($autoInstallerPath)) {
+                $autoInstallerContent = File::get($autoInstallerPath);
+                $autoInstallerData = json_decode($autoInstallerContent , true);
 
-            if($addon->blacklisted) {
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            }
-            $user = Http::withHeaders(['Authorization' => $key, "userid" => $addon->buyerid])
-            ->post('https://pterodactylmarket.com/api/seller/user')
-            ->json();
-            if($user['banned']) {
-                License::where("transaction", '=', $request->id)->update(["blacklisted" => true]);
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
+                return $autoInstallerData;
             } else {
-                if($request->selectaddon !== strval($addon->name)) {
-                    return response()->json([
-                        'message' => 'Not the good addon.'
-                    ], 400);
-                }
-                if($addon->usage+1 > $addon->maxusage) {
-                    return response()->json([
-                        'message' => 'Too many usage.'
-                    ], 400);
-                }
-                return json_decode(file_get_contents("../autoinstaller/$request->selectaddon.json"), true);
+                return response()->json([
+                    'message' => 'Auto Installer file not found.' ,
+                ] , 404);
             }
+        } else {
+            return response()->json([
+                'message' => $result
+            ] , 400);
         }
     }
-    public function checkOnline() {
+
+    public function checkOnline()
+    {
         return 1;
     }
-    public function addonsList() {
-        $addon = Products::where('licensed', '=', 1)->get();
-        $addonarray = array();
-        foreach($addon as $add) {
-            array_push($addonarray, $add);
-        }
-        return $addonarray;
+
+    public function addonsList()
+    {
+        $licensedAddons = $this->licenseService->getLicensedAddons();
+        return $licensedAddons->toArray();
     }
 
-    public function checkIfExist(Request $request) {
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            $key = config('api.key');
-        $response = Http::withHeaders(['Authorization' => $key, 'transactionid' => $request->id])
-        ->post('https://pterodactylmarket.com/api/seller/transaction?Authorization')
-        ->json();
-        if($response['valid'] && $response['transaction_status'] == "COMPLETE") {
-            $addon = Http::withHeaders(['resourceid' => $response['resource_id'], "query" => "info"])
-            ->post('https://pterodactylmarket.com/api/public/resource')
-            ->json();
-            $user = Http::withHeaders(['Authorization' => $key, "userid" => $response['buyer_id']])
-            ->post('https://pterodactylmarket.com/api/seller/user')
-            ->json();
-            if($user['banned']) {
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            } else {
-                return response()->json([
-                    "message" => "done", "name" => $response['resource_id'], "fullname" => $addon['name'], "buyer" => $user['username']
-                                ], 200);
-            }
-        } else {
+    public function checkIfExist(Request $request)
+    {
+        $validator = Validator::make($request->all() , [
+            'id' => 'required' ,
+        ]);
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'Transaction is not valid.'
-            ], 400);
+                'message' => 'Invalid data provided.' ,
+                'errors' => $validator->errors() ,
+            ] , 400);
         }
-        } else {
-            $key = config('api.key');
+        $result = $this->licenseService->getDetails($request->id , '' , $request->ip() , false , false);
+        switch ($result) {
+            case LicenseService::LICENSE_NOT_FOUND:
+                return response()->json([
+                    'status' => 'error' ,
+                    'message' => 'No license found.'
+                ] , 404);
 
-            if($addon->blacklisted) {
+            case LicenseService::BLACKLISTED:
                 return response()->json([
+                    'status' => 'error' ,
                     'message' => 'User blacklisted.'
-                ], 418);
-            }
-            $user = Http::withHeaders(['Authorization' => $key, "userid" => $addon->buyerid])
-            ->post('https://pterodactylmarket.com/api/seller/user')
-            ->json();
-            if($user['banned']) {
-  License::where("transaction", '=', $request->id)->update(["blacklisted" => true]);
+                ] , 404);
+
+            case LicenseService::TOO_MANY_USAGE:
                 return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            } else {
-                if($addon->usage+1 > $addon->maxusage) {
-                    return response()->json([
-                        'message' => 'Too many usage.'
-                    ], 400);
-                }
+                    'status' => 'error' ,
+                    'message' => 'Too many usage.'
+                ] , 400);
+
+            default:
 
                 return response()->json([
-                    "message" => "done", "name" => $addon->name, "fullname" => $addon->fullname, "blacklisted" => $addon->blacklisted
-                ], 200);
-            }
+                    'status' => 'success' ,
+                    "message" => "done" , "name" => $result->product_id , "buyer" => $result->user->id
+                ] , 200);
         }
-        
+
+
     }
-    public function checklicenseCloudServers(Request $request) {
-        $addon = License::where("transaction", '=', $request->id)->first();
-        if (!$addon) {
-            return response()->json([
-                'message' => 'Can\'t find the transaction!'
-            ], 400);
-        } else {
-            $key = config('api.key');
 
-            if($addon->blacklisted) {
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            }
-            $user = Http::withHeaders(['Authorization' => $key, "userid" => $addon->buyerid])
-                ->post('https://pterodactylmarket.com/api/seller/user')
-                ->json();
-            if($user['banned']) {
-                License::where("transaction", '=', $request->id)->update(["blacklisted" => true]);
-                return response()->json([
-                    'message' => 'User blacklisted.'
-                ], 418);
-            } else {
-
-                if('585' !== strval($addon->name)) {
-                    return response()->json([
-                        'message' => 'Not the good addon.'
-                    ], 400);
-                }
-                return array('message' => 'done', 'name' => '585', 'fullname' => 'Cloud Servers', 'blacklisted' => false);
-            }
-        }
-    }
 }
