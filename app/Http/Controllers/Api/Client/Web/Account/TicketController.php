@@ -431,12 +431,14 @@ public function getMessages(Request $request, $id)
     {
         $ticket = Ticket::findOrFail($id);
         $user = auth('sanctum')->user();
+
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
         if ($user->role !== 1 && $user->id !== $ticket->user_id) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
+
         $attachments = [];
         if($ticket->attachement) {
             $attachments = $ticket->attachement->map(function ($attachment) {
@@ -447,8 +449,6 @@ public function getMessages(Request $request, $id)
                 ];
             });
         }
-
-
         return response()->json(['status' => 'success', 'data' => ['ticket' => $ticket, 'attachments' => $attachments]]);
     }
 

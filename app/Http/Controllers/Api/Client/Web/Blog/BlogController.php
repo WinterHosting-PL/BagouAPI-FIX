@@ -18,18 +18,18 @@ class BlogController {
             $elements->where('category_id', $request->category);
         }
         if ($request->page) {
-            $blogs = $elements->simplePaginate(10, ['*'], 'page', $request->page);
-            return response()->json(['status' => 'sucess', 'data' => BlogResource::collection($blogs)], 200);
+            $blogs = $elements->paginate(10, ['*'], 'page', $request->page);
+            return response()->json(['status' => 'success', 'data' => BlogResource::collection($blogs), 'totalPage' => $blogs->lastPage()], 200);
         }
 
         $blogs = $elements->paginate(10);
-        return response()->json(['status' => 'sucess', 'data' => BlogResource::collection($blogs)], 200);
+        return response()->json(['status' => 'success', 'data' => BlogResource::collection($blogs), 'totalPage' => $blogs->lastPage()], 200);
 
 
     }
     public function get(Blog $blog)
     {
-        return response()->json(['status' => 'sucess', 'data' => new BlogResource($blog)], 200);
+        return response()->json(['status' => 'success', 'data' => new BlogResource($blog)], 200);
     }
 
 }
