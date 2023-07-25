@@ -12,6 +12,7 @@ class License extends Model
      * @var string
      */
     protected $table = 'licenses';
+    protected $primaryKey = 'license';
 
     /**
      * Fields that are mass assignable.
@@ -42,7 +43,7 @@ class License extends Model
         'maxusage' => 'integer',
         'usage' => 'integer',
         'license' => 'string',
-        'version' => 'decimal:8,2',
+        'version' => 'float:2',
         'user_id' => 'integer',
         'order_id' => 'integer',
     ];
@@ -52,7 +53,7 @@ class License extends Model
      */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Products::class);
     }
 
     /**

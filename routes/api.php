@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminBlogController;
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminCategoryController;
+use App\Http\Controllers\Api\Client\Web\Admin\Users\AdminUsersController;
 use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
 use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
 use App\Http\Controllers\ClientController;
@@ -59,13 +60,12 @@ Route::prefix('client')->group(function () {
                 Route::put('/{id}', [ProductsController::class, 'updateProduct']);
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
             });
+               Route::prefix('users')->group(function () {
+                   Route::get('/', [AdminUsersController::class, 'get']);
+                   Route::put('/{id}', [AdminUsersController::class, 'edit']);
+               });
         });
-        // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
-         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!! // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
-         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
-         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
-         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
-         // RAJOUTER CASE USERNAME FORMULAIRE CHANGEMENT COMPTE!!!
+
         Route::prefix('tickets')->group(function () {
                 Route::post('/', [TicketController::class, 'createTicket']);
                 Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
@@ -138,8 +138,8 @@ Route::prefix('client')->group(function () {
             Route::post('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'sendLicense'])->middleware('auth:sanctum');
             //Delete a license usage
             Route::delete('/{license}', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'deleteIp'])->middleware('auth:sanctum');
+            Route::get('/encryptAllIPs', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'encryptAllIPs'])->middleware('auth:sanctum');
 
-            
         });
     });
     

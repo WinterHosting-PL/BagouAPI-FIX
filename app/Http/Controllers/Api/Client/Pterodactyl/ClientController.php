@@ -137,7 +137,7 @@ class ClientController extends Controller
                 'errors' => $validator->errors() ,
             ] , 400);
         }
-        $result = $this->licenseService->decrementUsage($request->id);
+        $result = $this->licenseService->decrementUsage($request->id, $request->ip);
         if ($result === LicenseService::LICENSE_NOT_FOUND) {
             return response()->json([
                 'status' => 'error' ,
@@ -147,6 +147,11 @@ class ClientController extends Controller
             return response()->json([
                 'status' => 'error' ,
                 'message' => 'Cannot decrement license usage.'
+            ] , 400);
+        } elseif ($result === LicenseService::IP_NOT_ALLOWED) {
+            return response()->json([
+                'status' => 'error' ,
+                'message' => 'This ip is not allowed to use the license..'
             ] , 400);
         } elseif ($result === LicenseService::USAGE_DECREMENTED) {
             return response()->json([

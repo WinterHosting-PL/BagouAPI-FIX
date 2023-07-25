@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\License;
 use App\Models\Products;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -31,8 +32,11 @@ class LicenseService
             if ($id !== $license->name) {
                 return self::NO_ADDON;
             }
-
-            if (!in_array($ip ,$license->ip)) {
+            $ips = [];
+            foreach ($license->ip as $encryptedIp) {
+                $ips[] = Crypt::decrypt($encryptedIp);
+            }
+            if (!in_array($ip ,$ips)) {
                 return self::IP_NOT_ALLOWED;
             }
 
@@ -56,8 +60,11 @@ class LicenseService
             if ($addonId !== $license->product_id && $addoncheck) {
                 return self::NO_ADDON;
             }
-
-            if (!in_array($ip ,$license->ip) && $ipcheck) {
+            $ips = [];
+            foreach ($license->ip as $encryptedIp) {
+                $ips[] = Crypt::decrypt($encryptedIp);
+            }
+            if (!in_array($ip ,$ips) && $ipcheck) {
                 return self::IP_NOT_ALLOWED;
             }
 
@@ -75,19 +82,28 @@ class LicenseService
     {
         $license = License::where('license' ,$license)->first();
         if ($license) {
+            $ips = [];
+            foreach ($license->ip as $encryptedIp) {
+                $ips[] = Crypt::decrypt($encryptedIp);
+            }
+            if(in_array($ip ,$ips)) {
+                $license->version = Products::where('id' ,'=' ,$license->name)->firstOrFail()['version'];
+                $license->save();
+                return true;
+            }
             if ($license->usage + 1 > $license->maxusage) {
                 return self::TOO_MANY_USAGE;
             }
 
             try {
                 $license->usage += 1;
-                $license->ip = array_merge($license->ip ,[$ip]);
+                $license->ip = array_merge($license->ip ,[Crypt::encrypt($ip)]);
                 $license->version = Products::where('id' ,'=' ,$license->name)->firstOrFail()['version'];
                 $license->save();
 
                 return true;
             } catch (\Exception $e) {
-                Log::error('Erreur lors de l\'incrémentation de l\'utilisation de la licence: ' . $e->getMessage());
+                Log::error("A error occurred: " . $e->getMessage());
                 return false;
             }
         }
@@ -106,20 +122,33 @@ class LicenseService
         }
     }
 
-    public function decrementUsage(string $license)
+    public function decrementUsage(string $license, string $ip)
     {
         $license = License::where('license' ,$license)->first();
         if ($license) {
             if ($license->usage < 1) {
                 return self::USAGE_CANNOT_DECREMENT;
             }
-
+            $ips = [];
+            foreach ($license->ip as $encryptedIp) {
+                $ips[] = Crypt::decrypt($encryptedIp);
+            }
+            if (!in_array($ip ,$ips)) {
+                return self::IP_NOT_ALLOWED;
+            }
             try {
                 $license->usage -= 1;
+                $ips = [];
+                foreach($license->ip as $encryptedIp) {
+                    if(Crypt::decrypt($encryptedIp) !== $ip) {
+                        $ips[] = $encryptedIp;
+                    }
+                }
+                $license->ip = $ips;
                 $license->save();
                 return self::USAGE_DECREMENTED;
             } catch (\Exception $e) {
-                Log::error('Erreur lors de la décrémentation de l\'utilisation de la licence: ' . $e->getMessage());
+                Log::error('A error occurred: ' . $e->getMessage());
                 return false;
             }
         }

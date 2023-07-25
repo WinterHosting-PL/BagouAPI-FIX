@@ -21,3 +21,12 @@
     Header add Access-Control-Allow-Credentials true
 
 </IfModule>
+<IfModule mod_deflate.c>
+    # Activer la compression GZIP
+    SetOutputFilter DEFLATE
+    # Ne pas compresser les ressources non compressibles
+    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|rar|zip|pdf)$ no-gzip dont-vary
+    SetEnvIfNoCase Request_URI \.(?:exe|t?gz|zip|bz2|sit|rar)$ no-gzip dont-vary
+    # Informer les navigateurs que le contenu est compressé avec GZIP
+    Header append Vary User-Agent env=!dont-vary
+</IfModule>

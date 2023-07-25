@@ -28,15 +28,21 @@ class AccountController extends Controller
     public function edit(Request $request): \Illuminate\Http\JsonResponse {
         $user = auth('sanctum')->user();
         $validator = Validator::make($request->all(), [
-            'name' => 'string',
-            'email' => 'string'
+            'type' => 'string',
+            'data' => 'string'
         ]);
          if ($validator->fails()) {
             $errors = $validator->errors();
             $firstError = $errors->first();
             return response()->json(['status' => 'error', 'message' => $firstError], 500);
         }
-        User::where('id', '=', $user->id)->update(['email' => $request->email, 'name' => $request->name]);
+         if($request->type === 'email') {
+             User::where('id', '=', $user->id)->update(['email' => $request->data]);
+         } else if ($request->type === 'name') {
+             User::where('id', '=', $user->id)->update(['name' => $request->data]);
+         } else {
+             return response()->json(['status' => 'error', 'message' => 'Can\'t find a value to edit'], 404);
+         }
 
         return response()->json(['status' => 'success', 'message' => 'Account credentials successfully updated'], 200);
     }

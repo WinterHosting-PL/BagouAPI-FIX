@@ -3,26 +3,50 @@
 namespace App\Http\Controllers\Api\Client\Web\License;
 
 use App\Mail\TestMail;
-use App\Notifications\TestNotification;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Bus\DispatchesJobs;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Config;
 use Notification;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Products;
 use App\Models\License;
+use App\Http\Controllers\Api\Client\Web\License\LicenseResource;
 
 class LicenseController extends BaseController
 {
     public function get(): \Illuminate\Http\JsonResponse {
+
         $user = auth('sanctum')->user();
-        return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'license' => License::select('buyer', 'name', 'ip', 'maxusage', 'transaction', 'usage', 'version', 'order_id')
-        ->where('user_id', '=', $user->id)
-        ->get()]], 200);
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
+        }
+
+        $licenses = License::where('user_id', '=', $user->id)->get();
+        if($user->role === 1) {
+            License::where('user_id', '=', $user->id);
+        }
+        $doneLicenses = [];
+        foreach($licenses as $license) {
+            $ips = [];
+            foreach($license->ip as $ip) {
+                $ips[] = Crypt::decrypt($ip);
+            }
+            $doneLicenses[] = [
+            'product' => $license->product->name,
+            'ip' => $ips,
+            'maxusage' => $license->maxusage,
+            'license' => $license->license,
+            'usage' => $license->usage,
+            'version' => $license->version,
+            'order_id' => $license->order_id,
+        ];
+        }
+        return response()->json(
+            ['status' => 'success', 'data' =>
+                ['user' => $user->name,
+                    'license' => $doneLicenses]], 200);
         
     }
     public function deleteIp(Request $request, $license): \Illuminate\Http\JsonResponse {
@@ -31,12 +55,18 @@ class LicenseController extends BaseController
         * Pour ce faire il faut supprimer l'ip entrer en parametre de la license. Plus précisement de la colone 'ip' de la license.
         * Ensuite il faut enlever une utilisation a cette derniere.
         */
-        $user = auth('sanctum')->user();
-        $license = License::where('transaction', '=', $license)->where('user_id', '=', $user->id)->firstOrFail();
+           $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
+        }
+        $license = License::where('license', '=', $license)->where('user_id', '=', $user->id)->firstOrFail();
+        if($license->usage < 1) {
+                        return response()->json(['status' => 'error', 'message' => 'This license is not used.'], 500);
+        }
         if($license->user_id == $user->id) {
             $iplist = array();
             foreach($license->ip as $licen) {
-                if($licen !== $request->ip) {
+                if(Crypt::decrypt($licen) !== $request->ip) {
                     array_push($iplist, $licen);
                 }
             }
@@ -48,7 +78,10 @@ class LicenseController extends BaseController
         return response()->json(['status' => 'error', 'message' => 'License is not owned by the logged user.'], 500);
     } 
     public function sendLicense(Request $request): \Illuminate\Http\JsonResponse {
-        $user = auth('sanctum')->user();
+           $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
+        }
         
         $key = config('api.sxckey');
         if($request->type === 'ssx') {
@@ -178,6 +211,27 @@ class LicenseController extends BaseController
        
 
     }
+public function encryptAllIPs()
+{
+       $user = auth('sanctum')->user();
+        if (!$user || $user->role !== 1) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized!.'], 500);
+        }
+    $licenses = License::all();
+
+    foreach ($licenses as $license) {
+        $encryptedIPs = [];
+
+        foreach ($license->ip as $ip) {
+            $encryptedIPs[] = Crypt::encrypt($ip);
+        }
+
+        $license->ip = $encryptedIPs;
+        $license->save();
+    }
+
+    return response()->json(['status' => 'success', 'message' => 'All IPs encrypted successfully'], 200);
+}
 
 }
 
