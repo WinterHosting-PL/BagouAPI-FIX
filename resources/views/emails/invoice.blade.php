@@ -93,6 +93,28 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
+        @media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .col {
+                flex-basis: 100%;
+            }
+            .address {
+                text-align: left;
+                margin-bottom: 20px;
+            }
+            .item-list td {
+                display: block;
+                text-align: left;
+            }
+            .item-list th, .item-list td {
+                text-align: left;
+            }
+            .item-list thead {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -130,31 +152,34 @@
         <table class="item-list">
             <thead>
                 <tr>
-                    <th>Description</th>
+                    <th>Name</th>
                     <th>Price</th>
+                    <th>License</th>
+
                 </tr>
             </thead>
             <tbody>
                 @foreach($items as $item)
                 <tr>
-                    <td>{{$item['description']}}</td>
+                    <td>{{$item['name']}}</td>
                     <td>${{$item['price']}}</td>
+                    <td>
+                        @if(isset($item['license']) && $item['license'])
+                            {{$item['license']}}
+                        @else
+                            No license
+                        @endif
+                    </td>
+
                 </tr>
                 @endforeach
             </tbody>
             <tfoot>
                 <tr>
-                    <td>Total excl. Fees:</td>
+                    <td colspan="2">Total incl. Fees:</td>
                     <td>{{number_format(array_sum(array_column($items, 'price')), 2)}}€</td>
                 </tr>
-                <tr>
-                    <td>Total Fees:</td>
-                    <td>{{number_format(count($items) * 0.35, 2)}}€</td>
-                </tr>
-                <tr>
-                    <td>Total incl. Fees:</td>
-                    <td>{{number_format(array_sum(array_map(function($item) { return $item['price'] + 0.35; }, $items)), 2)}}€</td>
-                </tr>
+
             </tfoot>
         </table>
         <p class="thanks">Thank you for choosing us!</p>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Client\Web;
 
 use App\Mail\TestMail;
+use App\Models\License;
 use App\Notifications\TestNotification;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -37,8 +38,12 @@ class AddonsController extends BaseController
         * This function return a addon with their description.
         * She use "id" parameters.
         */
-
-        return ['message' => 'success', 'data' => Products::where('id', '=', $request->id)->firstOrFail()];
+        $user = auth('sanctum')->user();
+        $product = Products::where('id', '=', $request->id)->firstOrFail();
+        if (!$user) {
+            return ['message' => 'success', 'data' => $product, 'owned' => false];
+        }
+        return ['message' => 'success', 'data' => $product, 'owned' => License::where('product_id', $product->id)->where('user_id', $user->id)->exists()];
     }
 
 }

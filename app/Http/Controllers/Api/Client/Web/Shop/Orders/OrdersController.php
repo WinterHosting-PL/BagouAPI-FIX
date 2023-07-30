@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Shop\Orders;
 
-use App\Mail\InvoiceMail;
+use App\Mail\OrderConfirmed;
 use App\Mail\TestMail;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
@@ -13,10 +13,10 @@ use App\Models\Products;
 use App\Models\Orders;
 use App\Models\User;
 use App\Models\License;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CouponCode;
+use Illuminate\Support\Facades\Storage;
 use League\ISO3166\ISO3166;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Validator;
 
 class OrdersController extends BaseController
 {
@@ -47,7 +47,16 @@ class OrdersController extends BaseController
 
     public function create(Request $request): \Illuminate\Http\JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'products' => 'required|array',
+            'products.*' => 'integer', // This validates each element of the array as an integer
+        ]);
 
+        if ($validator->fails()) {
+            // Handle validation failure
+            // For example, you can return a response with error messages
+            return response()->json(['status' => 'error', 'message' => 'Refresh the page and try again.'], 422);
+        }
         /*
          * Create a order with mollie as payment gateway
          * Parameters : product (productid), redirectionUrl, webhookUrl (optional)
@@ -64,18 +73,25 @@ class OrdersController extends BaseController
             return response()->json(['status' => 'success', 'data' => $order->checkout], 200);
         }
 
-        $product = Products::where('id', '=', $request->product)->firstOrFail();
+        $order = Orders::latest()->first();
+        if($order) {
+            $order = Orders::latest()->first()->id+1;
+        } else {
+            $order = 0;
+        }
         $data = [
-            'success_url' => "https://privatewebsite.bagou450.com/product/purchase/$product->id",
-            'cancel_url' => "https://privatewebsite.bagou450.com/product/purchase/$product->id",
+            'success_url' => "https://privatewebsite.bagou450.com/order/$order",
+            'cancel_url' => "https://privatewebsite.bagou450.com/order/$order",
             'currency' => 'EUR',
             'customer_email' => $user->email,
             'customer_creation' => 'always'
         ];
         $data['mode'] = 'payment';
         $items = array();
+        $totalPrice = 0;
         foreach ($request->products as $product) {
             $productdata = Products::where('id', '=', $product)->firstOrFail();
+            $totalPrice += $productdata->price;
             if($productdata->reccurent) {
                 $data['mode'] = 'subscription';
                 $data['line_items'] = [[
@@ -88,6 +104,7 @@ class OrdersController extends BaseController
             $items[] = array('price' => $productdata->stripe_price_id, 'quantity' => 1);
 
         }
+
         $data['line_items'] = $items;
         $orderfirst = Orders::latest()->first();
         $id = 0;
@@ -95,7 +112,7 @@ class OrdersController extends BaseController
             $id = $orderfirst->id + 1;
         }
 
-        $request = Http::asForm()->withHeaders([
+        $therequest = Http::asForm()->withHeaders([
             'Authorization' => 'Bearer ' . config('services.stripe.secret'),
             'Content-Type' => 'application/x-www-form-urlencoded',
         ])->post('https://api.stripe.com/v1/checkout/sessions', $data)->object();
@@ -107,10 +124,10 @@ class OrdersController extends BaseController
             'id' => $id,
             'user_id' => $user->id,
             'products' => $request->products,
-            'stripe_id' => $request->id,
+            'stripe_id' => $therequest->id,
             'status' => 'incomplete',
-            'price' => $request->amount_total,
-            'checkout' => $request->url,
+            'price' => $totalPrice,
+            'checkout' => $therequest->url,
             'address' => $user->address,
             'country' => $user->country,
             'city' => $user->city,
@@ -120,7 +137,7 @@ class OrdersController extends BaseController
         );
         Orders::create($order);
 
-        return response()->json(['status' => 'success', 'data' => $request->url], 200);
+        return response()->json(['status' => 'success', 'data' => $therequest->url], 200);
 
     }
     public function status(Request $request): \Illuminate\Http\JsonResponse
@@ -131,23 +148,28 @@ class OrdersController extends BaseController
          */
         $user = auth('sanctum')->user();
         if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
+            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated.'], 500);
         }
         (new \App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController)->updatestatus();
 
         $order = Orders::where('id', '=', $request->id)->where('user_id', '=', $user->id)->first();
 
         if ($order) {
-            $licenses = array();
+            $productsinfos = array();
             if ($order->status === 'complete') {
                 foreach ($order->products as $product) {
-                    $productdata = Products::where('id', $product->id)->firstOrFail();
-                    if($productdata->licensed) {
-                        $licenses[] = array('product' => $product->id, 'product_name' => $product->name, 'license' => License::where('order_id', '=', $order->id)->where('product_id', '=', $product->id)->where('user_id', '=', $user->id)->firstOrFail()->transaction);
+                    $license = License::where('order_id', '=', $order->id)->where('product_id', '=', $product)->where('user_id', '=', $user->id)->first();
+                    if($license) {
+                        $license = $license->license;
+                    } else {
+                        $license = null;
                     }
+                    $addon = Products::where('id', $product)->firstOrFail();
+
+                    $productsinfos[] = array('id' => $product, 'name' => $addon->name, 'tag' => $addon->tag, 'price' => $addon->price,'license' => $license);
                 }
             }
-            $order->licenses = $licenses;
+            $order->products = $productsinfos;
             return response()->json(['status' => 'success', 'data' => ['exist' => true, 'order' => $order]], 200);
 
         }
@@ -167,39 +189,39 @@ class OrdersController extends BaseController
         $orders = Orders::where('status', '=', 'incomplete')->get();
 
         foreach ($orders as $order) {
-            $payment = $request->post("https://api.stripe.com/v1/checkout/sessions/$order->stripe_id")->object();
-            if($order->created_at->created_at->diffInHours(now()) >= 24 && $payment->payment_status != 'paid') {
+            $payment = $request->get("https://api.stripe.com/v1/checkout/sessions/$order->stripe_id")->object();
+            if($order->created_at->diffInHours(now()) >= 24 && $payment->payment_status != 'paid') {
                 Orders::where('id', '=', $order->id)->update(['status' => 'expired']);
                 continue;
             }
             if ($payment->payment_status == 'paid') {
-                Orders::where('id', '=', $order->id)->update(['status' => 'complete']);
                 $licenses = array();
                 $items = array();
                 foreach ($order->products as $product) {
-                    $addon = Products::where('id', $product->id)->firstOrFail();
+                    $addon = Products::where('id', $product)->firstOrFail();
                     $user = User::where('id', '=', $order->user_id)->firstOrFail();
-                    if($product->licensed) {
+                    $license = null;
+                    if($addon->licensed) {
                         $transaction = 'aa';
-                        while ($transaction === 'aa' or License::where("transaction", '=', $transaction)->exists()) {
+                        while ($transaction === 'aa' or License::where('license', $transaction)->exists()) {
                             $bytes = random_bytes(32);
                             $transaction = "bgxw_" . bin2hex($bytes);
                         }
-                        $license = ['blacklisted' => false, "sxcid" => null, 'buyer' => $user->name, 'fullname' => $addon->name, 'ip' => [], 'maxusage' => 2, 'product_id' => $addon->id, 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500, 'bbb_id' => $addon->bbb_id, 'bbb_license' => $transaction, 'order_id' => $order->id, 'user_id' => $order->user_id];
+                        $license = ['blacklisted' => false, 'user_id' => $user->id, 'product_id' => $product, 'ip' => [], 'maxusage' => 2, 'license' => $transaction, 'usage' => 0, 'order_id' => $order->id];
                         License::create($license);
-                        $licenses[] = $license;
+                        $license = $transaction;
                     }
                     $items[] = [
                         'description' => $addon->name,
+                        'name' => $addon->name,
                         'quantity' => 1,
                         'price' => $addon->price,
-                        'tax' => 0.35,
+                        'license' => $license
                     ];
                 }
 
 
 
-                // Récupération des données pour la facture
                 $invoice_number = "#$order->id"; // Numéro de la facture
                 $invoice_date = $order->created_at->format('Y-m-d'); // Date de la facture
                 $due_date = $order->created_at->format('Y-m-d'); // Date limite de paiement
@@ -215,16 +237,13 @@ class OrdersController extends BaseController
                 // Création du PDF de la facture
                 $pdf = PDF::loadView('invoices.invoice', compact('invoice_number', 'invoice_date', 'due_date', 'customer', 'items'));
                 $pdf->setPaper('A4', 'portrait');
+
                   Mail::to($user->email)
-                      ->send(new OrderConfirmed($pdf->download('invoice.pdf')));
+                      ->send(new OrderConfirmed($pdf, $items, $order->id, $order->created_at, $order->created_at, $customer));
                     Mail::to('receipts@bagou450.com')
-                        ->send(new OrderConfirmed($pdf->download('invoice.pdf')));
-                if($licenses) {
-                    Mail::to($user->email)
-                        ->send(new TestMail($licenses));
-                    Mail::to('receipts@bagou450.com')
-                        ->send(new TestMail($licenses));
-                }
+                        ->send(new OrderConfirmed($pdf, $items, $order->id, $order->created_at, $order->created_at, $customer));
+                Orders::where('id', '=', $order->id)->update(['status' => 'complete']);
+
             }
         }
         return response()->json(['status' => 'success'], 200);
@@ -277,22 +296,23 @@ class OrdersController extends BaseController
         $archiveName = "$order->id.zip";
         if ($archive->open($archiveName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($order->products as $product) {
+                $productname = Products::where('id', $product)->firstOrFail()->name;
                 $zipFileName = '../addonfiles/' . $product . '.zip';
                 if(!file_exists($zipFileName)) {
                     return response()->json(['status' => 'error', 'message' => "Errors can\'t add all files. $zipFileName not exist!"], 500);
 
                 }
-                if ($archive->locateName((string) $product) === false) {
-                    $archive->addEmptyDir((string) $product); // Crée le dossier avec l'ID
+                if ($archive->locateName((string) $productname) === false) {
+                    $archive->addEmptyDir((string) $productname); // Crée le dossier avec l'ID
                     $subArchive = new \ZipArchive();
                     if ($subArchive->open($zipFileName) === true) {
-                        $subArchive->extractTo($product); // Extrait le contenu du fichier ZIP dans le dossier correspondant
+                        $subArchive->extractTo($productname); // Extrait le contenu du fichier ZIP dans le dossier correspondant
                         $subArchive->close();
-                        $subFiles = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($product));
+                        $subFiles = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($productname));
                         foreach ($subFiles as $subFile) {
                             if (!$subFile->isDir()) {
                                 $filePath = $subFile->getPathname();
-                                $relativePath = $product . '/' . str_replace($product . '/', '', $filePath);
+                                $relativePath = $productname . '/' . str_replace($productname . '/', '', $filePath);
                                 $archive->addFile($filePath, $relativePath);
                             }
                         }
@@ -318,6 +338,53 @@ class OrdersController extends BaseController
             }
         }
         return response()->download($archiveName, $archiveName, ['Content-Type: application/zip'])->deleteFileAfterSend(true);;
+
+    }
+    public function getDownloadOnelink(String $id): \Illuminate\Http\JsonResponse
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
+        }
+        $order = Orders::where('user_id', '=', $user->id)->where('status', 'complete')
+            ->where(function ($query) use ($id) {
+                $query->whereJsonContains('products', (int)$id);
+            })->first();
+        if(!$order) {
+            return response()->json(['status' => 'error', 'message' => 'No orders found!'], 500);
+        }
+        $token = bin2hex(random_bytes(128));
+        while (Orders::where('token', $token)->exists()) {
+            $token = bin2hex(random_bytes(128));
+        }
+
+        $order->update(['token' => $token]);
+
+        return response()->json(['status' => 'success', 'data' => "/orders/downloadOne/$token"], 200);
+    }
+    public function downloadOne(Request $request, $token)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
+        }
+        $order = Orders::where('user_id', '=', $user->id)->where('token', '=', $token)->where('status', 'complete')
+            ->where(function ($query) use ($request) {
+                $query->whereJsonContains('products', (int)$request->product);
+            })->first();
+        if(!$order) {
+            return response()->json(['status' => 'error', 'message' => 'No orders found!'], 404);
+        }
+        if ($order && in_array($request->product, $order->products)) {
+            // Retrieve the product's name from the database
+            $product = Products::where('id', $request->product)->firstOrFail();
+
+            // Build the file path
+            $filePath = "../addonfiles/{$product->id}.zip";
+
+            return response()->download($filePath, "$product->name.zip");
+        }
+        return response()->json(['status' => 'error', 'message' => 'No orders found!'], 404);
 
     }
     public function downloadInvoiceLink(Request $request, $order)

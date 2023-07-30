@@ -1,0 +1,86 @@
+Hey, thanks for your purchase.
+
+First add the pterodactyl eslint configuration to your pterodactyl
+
+cd /var/www/pterodactyl
+wget https://raw.githubusercontent.com/pterodactyl/panel/develop/.eslintignore
+wget https://raw.githubusercontent.com/pterodactyl/panel/develop/.eslintrc.yml
+
+Now go to change the panel files
+
+1 - in resources/scripts/components/dashboard/ServerRow.ts after "const [ stats, setStats ] = useState<ServerStats | null>(null);" add :
+
+    const eggName = server.eggName;
+
+
+2 - In same file replace "<p css={tw`text-lg break-words`}>{server.name}</p>" by:
+
+                        <p css={tw`text-lg break-words`}>[{eggName}] {server.name}</p>
+
+3 - In resources/scripts/api/server/getServer.ts after "node: string;" add :
+
+    eggName: string;
+
+4 - In same file after "node: data.node," add :
+
+    eggName: data.eggName,
+
+5 - In app/Http/Controllers/Api/Client/Server/ServerController.php above "return $this->fractal->item($server)" add:
+
+
+        $eggname = Egg::where('id', '=', $server->egg_id)->firstOrFail()->name;
+        $server['eggName'] = $eggname;
+
+5.2 - In same file after all import line add:
+
+use Pterodactyl\Models\Egg;
+
+
+
+6 - In app/Http/Controllers/Api/Client/ClientController.php after "$servers = $builder->paginate(min($request->query('per_page', 50), 100))->appends($request->query());" add:
+
+        foreach($servers as $server) {
+            $eggname = Egg::where('id', '=', $server->egg_id)->firstOrFail()->name;
+            $server['eggName'] = $eggname;
+        }
+6.2 - In same file after all import line add :
+
+use Pterodactyl\Models\Egg;
+
+
+7 - In app/Transformers/Api/Client/ServerTransformer.php after "'node' => $server->node->name," add :
+
+            'eggName' => $server->eggName,
+
+
+If you want same on server console:
+
+8 - In resources/scripts/components/server/ServerDetailsBlock.tsx after "const name = ServerContext.useStoreState(state => state.server.data!.name);" add:
+
+    const eggName = ServerContext.useStoreState(state => state.server.data!.eggName);
+    const totalname = '[' + eggName + '] ' + name;
+
+9 - In same file replace "<TitledGreyBox css={tw`break-words`} title={name} icon={faServer}>" by :
+
+        <TitledGreyBox css={tw`break-words`} title={totalname} icon={faServer}>
+
+
+If you don't have yarn install it :
+
+apt -y install curl dirmngr apt-transport-https lsb-release ca-certificates
+curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+apt -y install nodejs
+cd /var/www/pterodactyl
+npm i -g yarn
+yarn install
+
+And build the panel assets :
+
+yarn build:production
+chown -R www-data:www-data *
+
+
+If you need help contact me on discord : http://discord.bagou450.com/ (or https://discord.com/invite/98MdvaS3Qj)
+You don't have discord ? Send me a sms to +33 7 56 89 00 36 (Unsurcharged number)
+
+

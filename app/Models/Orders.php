@@ -11,6 +11,7 @@ class Orders extends Model
      */
     public const RESOURCE_NAME = 'orders';
 
+    public $timestamps = true;
 
     /**
      * The table associated with the model.
@@ -32,8 +33,14 @@ class Orders extends Model
         'status',
         'price',
         'token',
-        'checkout'
-    ];
+        'checkout',
+        'address',
+        'country',
+        'city',
+        'region',
+        'postal_code',
+        'name'
+        ];
 
     /**
      * Cast values to correct type.
@@ -47,6 +54,12 @@ class Orders extends Model
         'status' => 'string',
         'price' => 'float',
         'token' => 'string',
-        'checkout' => 'string'
+        'checkout' => 'string',
+        'address' => 'string',
+        'country' => 'string',
+        'city' => 'string',
+        'region' => 'string',
+        'postal_code' => 'string',
+        'name' => 'string'
     ];
 }

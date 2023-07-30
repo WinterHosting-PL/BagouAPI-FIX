@@ -56,13 +56,13 @@ Route::prefix('client')->group(function () {
             });
             Route::prefix('products')->group(function () {
                 Route::get('/', [ProductsController::class, 'listProducts']);
-                Route::post('/', [ProductsController::class, 'createProduct']);
+                Route::post('/create', [ProductsController::class, 'createProduct']);
                 Route::put('/{id}', [ProductsController::class, 'updateProduct']);
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
             });
                Route::prefix('users')->group(function () {
                    Route::get('/', [AdminUsersController::class, 'get']);
-                   Route::put('/{id}', [AdminUsersController::class, 'edit']);
+                   Route::post('/{id}', [AdminUsersController::class, 'edit']);
                });
         });
 
@@ -114,7 +114,7 @@ Route::prefix('client')->group(function () {
             Route::get('/oauthCallback', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'oauthloginCallback']);
 
         });
-        Route::group(['prefix' => 'orders', 'middleware' => ['auth:sanctum']], function () {
+        Route::group(['prefix' => 'orders'], function () {
             Route::get('/', [OrdersController::class, 'get']);
             Route::post('/', [OrdersController::class, 'create']);
             Route::get('/status', [OrdersController::class, 'status']);
@@ -122,6 +122,10 @@ Route::prefix('client')->group(function () {
             Route::get('/details', [OrdersController::class, 'orderDetails']);
             Route::get('/downloadlink/{order}', [OrdersController::class, 'getDownloadlink'])->name('orders.downloadlink');
             Route::get('/downloads/{token}', [OrdersController::class, 'download'])->name('orders.download');
+
+            Route::get('/downloadOnelink/{id}', [OrdersController::class, 'getDownloadOnelink'])->name('orders.downloadOnelink');
+            Route::get('/downloadOne/{token}', [OrdersController::class, 'downloadOne'])->name('orders.downloadOne');
+
             Route::get('/downloadInvoiceLink/{order}', [OrdersController::class, 'downloadInvoiceLink'])->name('orders.downloadInvoicelink');
             Route::get('/downloadInvoice/{order}', [OrdersController::class, 'downloadInvoice'])->name('orders.downloadInvoice');
         });

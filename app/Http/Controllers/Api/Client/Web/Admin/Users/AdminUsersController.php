@@ -34,7 +34,7 @@ class AdminUsersController
             }
         });
 
-    $total = $query->count();
+    $total = ceil($query->count()/$perPage);
 
     $users = $query->skip(($page - 1) * $perPage)
         ->take($perPage)
@@ -42,7 +42,7 @@ class AdminUsersController
 
     return response()->json(['status' => 'success', 'data' => $users, 'total' => $total]);
   }
-  public function edit(User $selectedUser, Request $request) {
+  public function edit(Int $selectedUser, Request $request) {
       $user = auth('sanctum')->user();
 
       if (!$user || $user->role !== 1) {
@@ -51,32 +51,31 @@ class AdminUsersController
       $validated = $request->validate([
           'name' => 'required',
           'email' => 'required',
-          'society' => 'optional',
           'address' => 'required',
           'city' => 'required',
           'country' => 'required',
           'region' => 'required',
           'postal_code' => 'required',
-          'phone_number' => 'required',
           'firstname' => 'required',
           'lastname' => 'required',
           'role' => 'required',
-          'userid' => 'required'
       ]);
-      $selectedUser->update([
-          'name' => $request->name,
-          'email' => $request->email,
-          'society' => $request->society,
-          'address' => $request->address,
-          'city' => $request->city,
-          'country' => $request->country,
-          'region' => $request->region,
-          'postal_code' => $request->postal_code,
-          'phone_number' => $request->phone_number,
-          'firstname' => $request->firstname,
-          'lastname' => $request->lastname,
-          'role' => $request->role,
-      ]);
+
+      $user = User::findOrFail($selectedUser);
+      $user->update($request->only([
+          'name',
+          'email',
+          'society',
+          'address',
+          'city',
+          'country',
+          'region',
+          'postal_code',
+          'phone_number',
+          'firstname',
+          'lastname',
+          'role',
+      ]));
     return response()->json(['status' => 'success', 'message' => 'User updated successfully.']);
 
   }
