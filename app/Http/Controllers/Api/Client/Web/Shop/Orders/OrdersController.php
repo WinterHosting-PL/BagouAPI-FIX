@@ -68,7 +68,15 @@ class OrdersController extends BaseController
         if (!$user->address || !$user->country || !$user->city || !$user->region || !$user->postal_code) {
             return response()->json(['status' => 'error', 'message' => 'You need to link a adress to your account.'], 500);
         }
-        $order = Orders::where('user_id', $user->id)->where('products', $request->products)->where('created_at', '<', Carbon::now()->subHours(24)->toDateTimeString())->first();
+        $allproducts = $request->products;
+        if($request->extension) {
+            $productdata = Products::where('extension_product', '=', $request->products[0])->where('extension', true)->first();
+            if(!$productdata) {
+                return response()->json(['status' => 'error', 'message' => 'No extension_product found'], 500);
+            }
+            $allproducts = [$productdata->id];
+        }
+        $order = Orders::where('user_id', $user->id)->where('products', $allproducts)->where('created_at', '<', Carbon::now()->subHours(24)->toDateTimeString())->first();
         if($order) {
             return response()->json(['status' => 'success', 'data' => $order->checkout], 200);
         }
@@ -89,14 +97,15 @@ class OrdersController extends BaseController
         $data['mode'] = 'payment';
         $items = array();
         $totalPrice = 0;
-        foreach ($request->products as $product) {
+        foreach ($allproducts as $product) {
             $productdata = Products::where('id', '=', $product)->firstOrFail();
+
             $totalPrice += $productdata->price;
             if($productdata->reccurent) {
                 $data['mode'] = 'subscription';
                 $data['line_items'] = [[
                     'price' => $productdata->stripe_price_id,
-                    'quantity' => 1
+                    'quantity' => 1,
                 ]];
                 $data['customer_creation'] = null;
                 break;
@@ -123,7 +132,7 @@ class OrdersController extends BaseController
         $order = array(
             'id' => $id,
             'user_id' => $user->id,
-            'products' => $request->products,
+            'products' => $allproducts,
             'stripe_id' => $therequest->id,
             'status' => 'incomplete',
             'price' => $totalPrice,
@@ -168,6 +177,11 @@ class OrdersController extends BaseController
 
                     $productsinfos[] = array('id' => $product, 'name' => $addon->name, 'tag' => $addon->tag, 'price' => $addon->price,'license' => $license);
                 }
+            } else {
+                foreach ($order->products as $product) {
+                    $addon = Products::where('id', $product)->firstOrFail();
+                    $productsinfos[] = array('id' => $product, 'name' => $addon->name, 'tag' => $addon->tag, 'price' => $addon->price, 'icon' => $addon->icon);
+                }
             }
             $order->products = $productsinfos;
             return response()->json(['status' => 'success', 'data' => ['exist' => true, 'order' => $order]], 200);
@@ -180,14 +194,13 @@ class OrdersController extends BaseController
     public function updatestatus(): \Illuminate\Http\JsonResponse
     {
         /*
-         * Update status of all mollie payment
+         * Update status of all orders
          */
         $request = Http::asForm()->withHeaders([
             'Authorization' => 'Bearer ' . config('services.stripe.secret'),
             'Content-Type' => 'application/x-www-form-urlencoded',
         ]);
         $orders = Orders::where('status', '=', 'incomplete')->get();
-
         foreach ($orders as $order) {
             $payment = $request->get("https://api.stripe.com/v1/checkout/sessions/$order->stripe_id")->object();
             if($order->created_at->diffInHours(now()) >= 24 && $payment->payment_status != 'paid') {
@@ -201,7 +214,7 @@ class OrdersController extends BaseController
                     $addon = Products::where('id', $product)->firstOrFail();
                     $user = User::where('id', '=', $order->user_id)->firstOrFail();
                     $license = null;
-                    if($addon->licensed) {
+                    if($addon->licensed && !$addon->extension) {
                         $transaction = 'aa';
                         while ($transaction === 'aa' or License::where('license', $transaction)->exists()) {
                             $bytes = random_bytes(32);
@@ -210,6 +223,19 @@ class OrdersController extends BaseController
                         $license = ['blacklisted' => false, 'user_id' => $user->id, 'product_id' => $product, 'ip' => [], 'maxusage' => 2, 'license' => $transaction, 'usage' => 0, 'order_id' => $order->id];
                         License::create($license);
                         $license = $transaction;
+                    }
+                    if($addon->extension) {
+
+                        $extension = $addon->extension_product;
+
+                        $license = License::where('product_id', '=', $addon->extension_product)->where('user_id', $order->user_id)->first();
+                        if(!$license) {
+                            return response()->json(['status' => 'error', 'message' => 'Extension product not found'], 404);
+                        }
+
+                        $license->maxusage +=1;
+                        $license->save();
+                        $license = $license->license;
                     }
                     $items[] = [
                         'description' => $addon->name,
@@ -297,7 +323,10 @@ class OrdersController extends BaseController
         if ($archive->open($archiveName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($order->products as $product) {
                 $productname = Products::where('id', $product)->firstOrFail()->name;
-                $zipFileName = '../addonfiles/' . $product . '.zip';
+                if (is_dir($productname)) {
+                    $this->deleteDirectory($productname);
+                }
+                $zipFileName = storage_path('app/private/zips/' . $product . '.zip');
                 if(!file_exists($zipFileName)) {
                     return response()->json(['status' => 'error', 'message' => "Errors can\'t add all files. $zipFileName not exist!"], 500);
 
@@ -332,11 +361,11 @@ class OrdersController extends BaseController
 
         $order->update(['token' => '']);
         $order->save();
-        foreach ($order->products as $product) {
-            if (is_dir($product)) {
-                $this->deleteDirectory($product);
+       /* foreach ($order->products as $product) {
+            if (is_dir(Products::where('id', $product)->firstOrFail()->name)) {
+                $this->deleteDirectory(Products::where('id', $product)->firstOrFail()->name);
             }
-        }
+        }*/
         return response()->download($archiveName, $archiveName, ['Content-Type: application/zip'])->deleteFileAfterSend(true);;
 
     }
@@ -380,7 +409,7 @@ class OrdersController extends BaseController
             $product = Products::where('id', $request->product)->firstOrFail();
 
             // Build the file path
-            $filePath = "../addonfiles/{$product->id}.zip";
+            $filePath = storage_path('app/private/zips/' . $product->id . '.zip');
 
             return response()->download($filePath, "$product->name.zip");
         }
@@ -430,7 +459,6 @@ class OrdersController extends BaseController
                 'description' => $addon->name,
                 'quantity' => 1,
                 'price' => $addon->price,
-                'tax' => 0.35,
             ];
         }
         $status = $order->status;

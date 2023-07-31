@@ -19,6 +19,9 @@ class ModpacksService
     public function cachedModpack(string $page ,string $type)
     {
         $data = ModPacksResult::where(['page' => $page ,'type' => $type])->first();
+        if(!$data) {
+            return false;
+        }
         if ( $data->updated_at->diffInHours(now()) < 24 ) {
             return json_decode($data->result ,true);
         }
@@ -32,32 +35,29 @@ ModPacksResult::where('page', '=', $page)->where('type', '=', $type)->delete();
     {
         $cursekey = $this->curseKey;
         $headers = ['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.81 Safari/537.36' ,'x-api-key' => $cursekey];
+        $data = [
+            'index' => $page * 20 - 20 ,
+            'pageSize' => 20 ,
+            'gameId' => 432 ,
+            'classId' => 4471 ,
+            'searchFilter' => $search ,
+            'sortField' => 2 ,
+            'sortOrder' => 'desc'
+        ];
         if ( $game_versions ) {
-            return Http::accept('application/json')
-                ->withHeaders($headers)
-                ->get('https://api.curseforge.com/v1/mods/search' ,[
-                    'index' => $page * 20 - 20 ,
-                    'pageSize' => 20 ,
-                    'gameId' => 432 ,
-                    'classId' => 4471 ,
-                    'searchFilter' => $search ,
-                    'sortField' => 2 ,
-                    'sortOrder' => 'desc' ,
-                    'gameVersion' => $game_versions
-                ])->object()->data;
-        } else if ( !$game_versions && !$loaders ) {
-            return Http::accept('application/json')
-                ->withHeaders($headers)
-                ->get('https://api.curseforge.com/v1/mods/search' ,[
-                    'index' => $page * 20 - 20 ,
-                    'pageSize' => 20 ,'gameId' => 432 ,
-                    'classId' => 4471 ,
-                    'searchFilter' => $search ,
-                    'sortField' => 2 ,
-                    'sortOrder' => 'desc'
-                ])->object()->data;
+            $data['gameVersion'] = $game_versions;
         }
-        return [];
+       if($loaders) {
+           if($loaders === 'forge') {
+               $data['modLoaderType'] = 1;
+           }
+           if($loaders === 'fabric') {
+               $data['modLoaderType'] = 4;
+           }
+       }
+        return Http::accept('application/json')
+            ->withHeaders($headers)
+            ->get('https://api.curseforge.com/v1/mods/search' ,$data)->object()->data;
     }
 
     public function getModpacksModrinth(string $game_versions ,string $page ,string $search ,string $loaders)
@@ -107,7 +107,6 @@ ModPacksResult::where('page', '=', $page)->where('type', '=', $type)->delete();
     $modpackslist = [];
     foreach ($tmplist as $modpack) {
         $modpackget = $httpClient->get("https://api.modpacks.ch/public/modpack/$modpack")->object();
-
         $versions = array();
         $loader = '';
         if (isset($modpackget->versions)) {
@@ -153,6 +152,7 @@ ModPacksResult::where('page', '=', $page)->where('type', '=', $type)->delete();
             ];
         }
     }
+
     if ($loaders && $loaders !== '') {
         $tmplist = array();
         foreach ($modpackslist as $modpack) {
@@ -171,7 +171,7 @@ ModPacksResult::where('page', '=', $page)->where('type', '=', $type)->delete();
         };
         return $tmplist;
     }
-    return [];
+    return $modpackslist;
 }
 
 
@@ -274,7 +274,7 @@ public function getModpacksVoidsWrath(string $game_versions, string $page, strin
         $icon = '';
         $link = $item->attr('href');
 
-        $item->filter("div.mod-pack-thumb")->each(function ($item_icon) use (&$icon) {
+        $item->filter("div.mod-pack-thumb")->each(function ($item_icon) use (&$icon, &$name) {
             $icon = explode("')", explode("image:url('", $item_icon->attr('style'))[1])[0];
             $item_icon->filter("div.mod-pack-title-list")->each(function ($item_name) use (&$name) {
                 $name = $item_name->text();
@@ -285,7 +285,6 @@ public function getModpacksVoidsWrath(string $game_versions, string $page, strin
                 }
             });
         });
-
         if (str_contains(strtolower($name), $search)) {
             $modpacksscrap = GoutteFacade::request('GET', $link);
             $downloadlink = '';

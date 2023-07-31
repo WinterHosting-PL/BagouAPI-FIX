@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api\Client\Web\Admin\Products;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ProductUpdateMail;
+use App\Models\Orders;
 use App\Models\Products;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ProductsController extends Controller
@@ -58,13 +62,18 @@ class ProductsController extends Controller
             'sxcname' => 'required',
             'bbb_id' => 'required',
             'link' => 'required',
-            'licensed' => 'required',
-            'isnew' => 'required',
-            'autoinstaller' => 'required',
-            'recurrent' => 'required',
-            'tab' => 'required',
+            'licensed' => 'required|boolean',
+            'isnew' => 'required|boolean',
+            'autoinstaller' => 'required|boolean',
+            'recurrent' => 'required|boolean',
+            'tab' => 'required|boolean',
             'tabroute' => 'nullable',
-            'description' => 'required'
+            'description' => 'required',
+            'logo' => 'required|file|mimes:webp',
+            'zip' => 'required|file|mimes:zip',
+            'extension' => 'required|boolean',
+            'extension_product' => 'nullable',
+            'hide' => 'required|boolean'
         ]);
 
         $user = auth('sanctum')->user();
@@ -86,6 +95,9 @@ class ProductsController extends Controller
         $productTab = $request->input('tab');
         $productTabRoute = $request->input('tabroute') ? $request->input('tabroute') : '';
         $productDescription = $request->input('description');
+        $productHide = $request->input('hide');
+        $productExtension = $request->input('extension');
+        $productExtensionProduct = $request->input('extension_product');
 
         // Créer le produit sur Stripe
         $response = Http::asForm()->withHeaders([
@@ -121,8 +133,13 @@ class ProductsController extends Controller
 
         $stripePrice = $response->json();
         $stripePriceId = $stripePrice['id'];
+        $newId = Products::max('id') +1;
 
-        // Stocker les données dans la table "products"
+        $logoFileName = $newId . '.webp';
+        $logoPath = $request->file('logo')->storeAs('public/logos', $logoFileName);
+        $logoUrl = Storage::url($logoPath);
+        $zipFileName = $newId . '.zip';
+        $request->file('zip')->storeAs('private/zips', $zipFileName);
         $product = Products::create([
             'name' => $productName,
             'tag' => $productTag,
@@ -140,6 +157,10 @@ class ProductsController extends Controller
             'description' => $productDescription,
             'stripe_id' => $stripeProductId,
             'stripe_price_id' => $stripePriceId,
+            'icon' => $logoUrl,
+            'hide' => $productHide,
+            'extension' => $productExtension,
+            'extension_product' => $productExtensionProduct
         ]);
 
         return response()->json(['status' => 'success', 'message' => 'done', 'data' => $product], 202);
@@ -163,13 +184,18 @@ class ProductsController extends Controller
             'sxcname' => 'required',
             'bbb_id' => 'required',
             'link' => 'required',
-            'licensed' => 'required',
-            'isnew' => 'required',
-            'autoinstaller' => 'required',
-            'recurrent' => 'required',
-            'tab' => 'required',
-            'tabroute' => 'required',
-            'description' => 'required'
+            'licensed' => 'required|boolean',
+            'isnew' => 'required|boolean',
+            'autoinstaller' => 'required|boolean',
+            'recurrent' => 'required|boolean',
+            'tab' => 'required|boolean',
+            'tabroute' => 'nullable',
+            'description' => 'required',
+            'logo' => 'nullable|file|mimes:webp',
+            'zip' => 'nullable|file|mimes:zip',
+            'extension' => 'required|boolean',
+            'extension_product' => 'nullable',
+            'hide' => 'required|boolean'
         ]);
         $user = auth('sanctum')->user();
         if (!$user || $user->role !== 1) {
@@ -181,9 +207,24 @@ class ProductsController extends Controller
         if (!$product) {
             return response()->json(['status' => 'error', 'message' => 'Product not found'], 404);
         }
+        if ($request->hasFile('logo')) {
+            $logoFileName = $product->id . '.webp';
+            if (Storage::exists('public/logos/' . $logoFileName)) {
+                Storage::delete('public/logos/' . $logoFileName);
+            }
+            $logoPath = $request->file('logo')->storeAs('public/logos', $logoFileName);
+            $logoUrl = Storage::url($logoPath);
+            $product->icon = $logoUrl;
+        }
+        if ($request->hasFile('zip')) {
+            $zipFileName = $product->id. '.zip';
+            if (Storage::exists('private/zips/' . $logoFileName)) {
+                Storage::delete('private/zips/' . $logoFileName);
+            }
+            $request->file('zip')->storeAs('private/zips', $zipFileName);
+        }
 
-
-        if($request->input('price') !== $product->price) {
+        if(floatval($request->input('price')) !== $product->price) {
             $response = Http::asForm()->withHeaders([
                 'Authorization' => 'Bearer ' . config('services.stripe.secret'),
                 'Content-Type' => 'application/x-www-form-urlencoded',
@@ -212,12 +253,23 @@ class ProductsController extends Controller
         $product->autoinstaller = $request->input('autoinstaller');
         $product->recurrent = $request->input('recurrent');
         $product->tab = $request->input('tab');
-        $product->tabroute = $request->input('tabroute');
+        $product->tabroute = $request->input('tabroute') ? $request->input('tabroute') : '';
         $product->description = $request->input('description');
+        $product->hide = $request->input('hide');
+        $product->extension = $request->input('extension');
+        $product->extension_product = $request->input('extension_product') ? $request->input('extension_product') : '';
+
 
         // Mettez à jour d'autres champs si nécessaire
         $product->save();
-
+        if ($request->hasFile('zip')) {
+            $orders = Orders::where('status', 'completed')->whereJsonContains('products', $product->id)->get();
+            foreach($orders as $order) {
+                $userEmail = $order->user->email;
+                Mail::to($userEmail)
+                    ->send(new ProductUpdateMail($product->id, $product->name, $order->user->name));
+            }
+        }
         return response()->json(['status' => 'success', 'message' => 'Product updated', 'data' => $product]);
     }
 

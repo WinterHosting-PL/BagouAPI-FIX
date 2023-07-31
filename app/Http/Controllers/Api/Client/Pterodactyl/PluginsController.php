@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Client\Pterodactyl;
 
+use App\Services\LicenseService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -32,9 +33,13 @@ class PluginsController extends BaseController
 
     public function getBukkit(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $url = $this->getBukkitUrl($request);
             $plugins = $this->scrapePlugins($url);
 
@@ -46,9 +51,13 @@ class PluginsController extends BaseController
 
     public function getSpigot(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $plugins = $this->getSpigotPlugins($request);
 
             return $plugins;
@@ -59,9 +68,13 @@ class PluginsController extends BaseController
 
     public function getPolymart(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $plugins = $this->getPolymartPlugins($request);
 
             return $plugins;
@@ -72,9 +85,13 @@ class PluginsController extends BaseController
 
     public function getCustom(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $plugins = $this->getCustomPlugins($request);
 
             return $plugins;
@@ -85,9 +102,13 @@ class PluginsController extends BaseController
 
     public function getVersions(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $versions = $this->getPluginVersions($request);
 
             return $versions;
@@ -98,9 +119,13 @@ class PluginsController extends BaseController
 
     public function getMcVersions(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $versions = $this->getMinecraftVersions($request);
 
             return $versions;
@@ -111,9 +136,13 @@ class PluginsController extends BaseController
 
     public function getCategories(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $categories = $this->getPluginCategories($request);
 
             return $categories;
@@ -124,9 +153,13 @@ class PluginsController extends BaseController
 
     public function download(Request $request)
     {
-        $license = $this->clientController->checkLicense($request->id, 326, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $url = $this->getDownloadUrl($request);
 
             return ['url' => $url, 'success' => true];
@@ -219,7 +252,7 @@ class PluginsController extends BaseController
         $start = $request->page * 20 - 20;
 
         if ($request->search) {
-            return Http::get("https://api.polymart.org/v1/search?limit=20&start=$start&query=$request->search&premium=0&sort=downloads")->json();
+            return Http::get("https://api.polymart.org/v1/search?limit=20&start=$start&query=$request->search&premium=0&sort=downloads")->json()['response']['result'];
         }
 
         $data = PolymartResult::where('page', '=', $request->page)->first();
@@ -344,16 +377,18 @@ class PluginsController extends BaseController
 
     private function getDownloadUrl(Request $request)
     {
-        if ($request->type === 'Bukkit') {
-            $downloadpage = GoutteFacade::request('GET', $request->link);
+        if ($request->url) {
+            if(str_starts_with($request->url, 'polymart')) {
+                $url = explode('-', $request->url)[1];
+                $url = Http::post("https://api.polymart.org/v1/getDownloadURL?", ['resource_id' => $url ])->json()['response']['result']['url'];
 
-            return $downloadpage->filter("div.content-container > div.download > div > a")->attr("href");
-        } elseif ($request->type === 'PolyMart') {
-            $result = Http::get("https://api.polymart.org/v1/resource/$request->downloadid/download-link")->json();
-
-            return $result['response']['url'];
-        } else {
-            return Http::get("https://api.spiget.org/v2/resources/$request->resourceId/download")->json();
+            } else {
+                $url = $this->get_final_location($request->url);
+            }
+            return $url;
         }
+        return response()->json([
+            'message' => 'Bad request.'
+        ], 400);
     }
 }

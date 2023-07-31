@@ -29,6 +29,9 @@ class License extends Model
         'version',
         'user_id',
         'order_id',
+        'bbb_license',
+        'bbb_id',
+        'sxcid'
     ];
 
     /**
@@ -46,6 +49,9 @@ class License extends Model
         'version' => 'float:2',
         'user_id' => 'integer',
         'order_id' => 'integer',
+        'bbb_id' => 'string',
+        'bbb_license' => 'string',
+        'sxcid' => 'string'
     ];
 
     /**

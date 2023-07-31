@@ -18,6 +18,9 @@ use App\Models\ModPacksDownloadLinks;
 use Config;
 use Weidner\Goutte\GoutteFacade;
 use Illuminate\Support\Facades\Redirect;
+use App\Services\LicenseService;
+use Illuminate\Support\Facades\File;
+use GuzzleHttp\Client;
 
 class McModPacksController extends BaseController
 {
@@ -36,13 +39,15 @@ class McModPacksController extends BaseController
 
     public function getMcModPacks(Request $request)
     {
+        $licenseService = app(LicenseService::class);
 
-        $license = $this->checkLicense($request->id , 327 , $request->ip());
-        if ( $license->getStatusCode() === 200 ) {
+        $clientController = new ClientController($licenseService);
+        $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+        if ($license['message'] === 'done' ) {
             $loaders = $request->loaders ?? false;
             $gameVersions = $request->game_versions ?? false;
 
-            if ( $request->search == '' && !$request->game_versions ) {
+           if ($request->search == '' && !$request->game_versions && !$request->loaders) {
                 $cached = $this->modPacksService->cachedModpack($request->page , $request->type);
                 if ( $cached ) {
                     return $cached;
@@ -51,6 +56,15 @@ class McModPacksController extends BaseController
 
 
             $modpacksList = [];
+            if(!$request->game_versions) {
+                $request->game_versions = '';
+            }
+            if(!$request->search) {
+                $request->search = '';
+            }
+            if(!$request->loaders) {
+                $request->loaders = '';
+            }
             switch ($request->type) {
                 case  'curseforge':
 
@@ -87,7 +101,7 @@ class McModPacksController extends BaseController
                     ] , 400);
 
             }
-            if ( $request->search == '' ) {
+            if ( !$request->search && !$request->game_versions && !$request->loaders ) {
                 $this->modPacksService->addCached($request->type , $request->page , $modpacksList);
             }
             return $modpacksList;
@@ -99,8 +113,13 @@ class McModPacksController extends BaseController
 
 public function getMcModPacksVersions(Request $request)
 {
-    $license = $this->checkLicense($request->id, 327, $request->ip());
-    if ($license->getStatusCode() === 200) {
+    $licenseService = app(LicenseService::class);
+
+    $clientController = new ClientController($licenseService);
+
+    $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+
+    if ($license['message'] === 'done' ) {
         $data = $this->modsVersionsService->getModVersionsFromCache($request->page, $request->modId, $request->type);
         if ($data && $request->search == '') {
             return $data;
@@ -135,8 +154,12 @@ public function getMcModPacksVersions(Request $request)
 
   public function getMcModpacksDescription(Request $request)
 {
-    $license = $this->checkLicense($request->id, 327, $request->ip());
-    if ($license->getStatusCode() === 200) {
+    $licenseService = app(LicenseService::class);
+
+    $clientController = new ClientController($licenseService);
+
+    $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+    if ($license['message'] === 'done' ) {
 
         if ($request->type == 'curseforge') {
             $description = $this->modPacksService->getCurseForgeModpackDescription($request->modpackId);
@@ -157,8 +180,12 @@ public function getMcModPacksVersions(Request $request)
 
     public function getMcVersions(Request $request)
     {
-        $license = $this->checkLicense($request->id , 327 , $request->ip());
-        if ( $license->getStatusCode() === 200 ) {
+        $licenseService = app(LicenseService::class);
+
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+        if ($license['message'] === 'done' ) {
             $versions = Http::get('https://launchermeta.mojang.com/mc/game/version_manifest.json')->json();
             $releases = array();
             foreach ($versions['versions'] as $version) {
@@ -174,9 +201,13 @@ public function getMcModPacksVersions(Request $request)
 
     public function download(Request $request)
     {
-        $license = $this->checkLicense($request->id, 327, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() === 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             if ($request->type === 'voidswrath') {
                 $dataHeaders = get_headers($request->data, true);
                 $contentLength = isset($dataHeaders['Content-Length']) ? $dataHeaders['Content-Length'] : null;
@@ -241,25 +272,28 @@ public function getMcModPacksVersions(Request $request)
 
     private function getEffectiveUrl($url)
     {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_exec($ch);
-        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        curl_close($ch);
+        $client = new Client(['allow_redirects' => false]); // Désactiver le suivi automatique des redirections
 
-        return $effectiveUrl;
+        $response = $client->head($url, ['http_errors' => false]); // Envoyer une requête HEAD sans récupérer le corps
+
+        if ($response->getStatusCode() === 302 && $response->hasHeader('Location')) {
+            $effectiveUrl = $response->getHeader('Location')[0];
+            return $effectiveUrl;
+        }
+
+        return $url;
     }
 
 
     public function getEgg(Request $request)
     {
-        $license = $this->checkLicense($request->id, 327, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-    if ($license->getStatusCode() === 200) {
-        $filePath = storage_path("modpacksegg/$request->type.json");
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 327 , $request->ip());
+        if ($license['message'] === 'done' ) {
+        $filePath = "../modpacksegg/$request->type.json";
 
         if (File::exists($filePath)) {
             $content = File::get($filePath);
@@ -276,21 +310,16 @@ public function getMcModPacksVersions(Request $request)
 
     public function forgeDownload(Request $request)
     {
-        $forgeVersions = Http::get('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json')->json();
-
-    $latestVersionKey = $request->version . '-latest';
-
-    $forgeVersion = Arr::get($forgeVersions, "promos.$latestVersionKey");
-
-    if ($forgeVersion) {
-        $url = "https://maven.minecraftforge.net/net/minecraftforge/forge/$request->version-$forgeVersion/forge-$request->version-$forgeVersion-installer.jar";
-        return Redirect::to($url);
-    } else {
-        return response()->json([
-            'message' => 'Invalid request.'
-        ], 400);
-    }
-
+        $forgeversions = Http::get('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json')->json();
+        $version = str_replace('-Snapshot', '', $request->version);
+        if(isset($forgeversions['promos'][$version . '-latest'])) {
+            $forgeversion = $forgeversions['promos'][$version . '-latest'];
+            return Redirect::to("https://maven.minecraftforge.net/net/minecraftforge/forge/$version-$forgeversion/forge-$version-$forgeversion-installer.jar");
+        } else {
+            return response()->json([
+                'message' => 'Invalid request.'
+            ], 400);
+        }
     }
 
     public function fabricDownload(Request $request)

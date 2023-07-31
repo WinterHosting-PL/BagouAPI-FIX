@@ -39,7 +39,8 @@ class Orders extends Model
         'city',
         'region',
         'postal_code',
-        'name'
+        'name',
+        'license'
         ];
 
     /**

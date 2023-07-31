@@ -23,10 +23,11 @@ class AddonsController extends BaseController
         if(!$request->perpage || $request->perpage == 0 ) {
             $request->perpage = 10;
         }
-        $addons = Products::get();
+        $addons = Products::where('hide', false);
         if($request->search !== '' && $request->search) {
-            $addons =  Products::where('name', 'like', "%$request->search%")->get();
+            $addons->where('name', 'like', "%$request->search%")->orWhere('description', 'like', "%$request->search%")->orWhere('tag', 'like', "%$request->search%");
         }
+        $addons = $addons->get();
         $page = ceil(count($addons)/$request->perpage);
 
         $addons = array_slice($addons->toArray(), $request->page*$request->perpage-$request->perpage, $request->perpage );
@@ -39,11 +40,17 @@ class AddonsController extends BaseController
         * She use "id" parameters.
         */
         $user = auth('sanctum')->user();
-        $product = Products::where('id', '=', $request->id)->firstOrFail();
-        if (!$user) {
-            return ['message' => 'success', 'data' => $product, 'owned' => false];
+        $product = Products::where('id', '=', $request->id)->first();
+        if(!$product) {
+            return ['status' => 'error', 'message' => 'No product found'];
         }
-        return ['message' => 'success', 'data' => $product, 'owned' => License::where('product_id', $product->id)->where('user_id', $user->id)->exists()];
+        if($product->hide) {
+            return ['status' => 'error', 'message' => 'No product found'];
+        }
+        if (!$user) {
+            return ['status' => 'success', 'data' => $product, 'owned' => false];
+        }
+        return ['status' => 'success', 'data' => $product, 'owned' => License::where('product_id', $product->id)->where('user_id', $user->id)->exists()];
     }
 
 }

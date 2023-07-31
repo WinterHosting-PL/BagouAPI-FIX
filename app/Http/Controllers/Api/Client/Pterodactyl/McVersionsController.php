@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Client\Pterodactyl;
 
+use App\Services\LicenseService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -10,20 +11,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
 use App\Models\License;
+use Illuminate\Support\Facades\Validator;
 
 class McVersionsController extends BaseController
 {
     public function getVersions(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+            'stype' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'You need to provide a stype and a id!'
+            ], 400);
+        }
 
-         $this->validate($request, [
-                'id' => 'required',
-                'stype' => 'required',
-         ]);
+        $licenseService = app(LicenseService::class);
 
-        $license = $this->checkLicense($request->id, 296, $request->ip());
+        $clientController = new ClientController($licenseService);
 
-        if ($license->getStatusCode() === 200) {
+        $license = $clientController->checkLicense($request->id , 296 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $versions = null;
 
             $validStypes = [
@@ -61,14 +71,24 @@ class McVersionsController extends BaseController
 
     public function downloadVersion(Request $request)
     {
-        $this->validate($request, [
-                'id' => 'required',
-                'stype' => 'required',
-                'version' => 'required',
-            ]);
-        $license = $this->checkLicense($request->id, 296, $request->ip());
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+            'stype' => 'required',
+            'version' => 'required'
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'You need to provide a styp, a id and also a version!'
+            ], 400);
+        }
 
-        if ($license->getStatusCode() === 200) {
+        $licenseService = app(LicenseService::class);
+
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 296 , $request->ip());
+
+        if ($license['message'] === 'done' ) {
             $url = '';
 
             $nozipStypes = [
@@ -95,12 +115,11 @@ class McVersionsController extends BaseController
                 $url = str_replace(' ', '%20', $url);
                 $headers = get_headers($url, true);
                 $contentLength = isset($headers['Content-Length']) ? $headers['Content-Length'] : null;
-
                 return response()->json([
                     'message' => 'Good',
                     'data' => $url,
                     'size' => $contentLength,
-                    'version' => floatval(json_decode($license->getContent())->version)
+                    'version' => floatval(json_decode($license['version']))
                 ], 200);
             } else {
                 return response()->json([

@@ -72,7 +72,7 @@
         <p>35450, Dourdain</p>
         <p>Bretagne, France</p>
         <p>contact@bagou450.com</p>
-        <p>SIRET: 12345678901234</p> 
+        <p>SIRET: 95161303300012</p>
     </div>
     <div class="address" style="text-align: right;">
         <p class="address-title">Billing Address</p>

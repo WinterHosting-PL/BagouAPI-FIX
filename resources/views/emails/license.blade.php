@@ -55,8 +55,8 @@
     <tbody>
         @foreach($licenses as $license)
         <tr>
-            <td style="padding: 10px; border: 1px solid #000;">{{$license['fullname']}}</td>
-            <td style="padding: 10px; border: 1px solid #000;">{{$license['transaction']}}</td>
+            <td style="padding: 10px; border: 1px solid #000;">{{$license['productname']}}</td>
+            <td style="padding: 10px; border: 1px solid #000;">{{$license['license']}}</td>
         </tr>
         @endforeach
     </tbody>

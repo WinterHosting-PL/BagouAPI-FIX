@@ -28,8 +28,7 @@ class LicenseService
             if ($license->blacklisted) {
                 return self::BLACKLISTED;
             }
-
-            if ($id !== $license->name) {
+            if ($id !== "$license->product_id") {
                 return self::NO_ADDON;
             }
             $ips = [];
@@ -49,7 +48,6 @@ class LicenseService
     {
 
         $license = License::where("license" ,'=' ,$id)->first();
-
         if (!$license) {
             return self::LICENSE_NOT_FOUND;
         } else {
@@ -57,7 +55,7 @@ class LicenseService
                 return self::BLACKLISTED;
             }
 
-            if ($addonId !== $license->product_id && $addoncheck) {
+            if ($addonId !== "$license->product_id" && $addoncheck) {
                 return self::NO_ADDON;
             }
             $ips = [];
@@ -80,6 +78,7 @@ class LicenseService
 
     public function incrementUsage(string $license ,string $ip)
     {
+
         $license = License::where('license' ,$license)->first();
         if ($license) {
             $ips = [];
@@ -87,18 +86,22 @@ class LicenseService
                 $ips[] = Crypt::decrypt($encryptedIp);
             }
             if(in_array($ip ,$ips)) {
-                $license->version = Products::where('id' ,'=' ,$license->name)->firstOrFail()['version'];
+                $license->version = Products::where('id' ,'=' ,$license->product_id)->firstOrFail()['version'];
                 $license->save();
                 return true;
             }
+
             if ($license->usage + 1 > $license->maxusage) {
                 return self::TOO_MANY_USAGE;
             }
 
             try {
                 $license->usage += 1;
+
                 $license->ip = array_merge($license->ip ,[Crypt::encrypt($ip)]);
-                $license->version = Products::where('id' ,'=' ,$license->name)->firstOrFail()['version'];
+
+                $license->version = Products::where('id' ,'=' ,$license->product_id)->firstOrFail()['version'];
+
                 $license->save();
 
                 return true;

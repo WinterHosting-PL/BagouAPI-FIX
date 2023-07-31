@@ -1,0 +1,79 @@
+{
+  "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2023-06-21T13:21:05+00:00",
+  "name": "CurseForge modpacks installation",
+  "author": "contact@bagou450.com",
+  "description": "Install Curseforge modpacks.\r\n\r\nUSED BY MODPACKS INSTALLER DO NOT REMOVE",
+  "features": [
+    "eula",
+    "java_version",
+    "pid_limit"
+  ],
+  "docker_images": {
+    "Java 17": "ghcr.io\/pterodactyl\/yolks:java_17",
+    "Java 16": "ghcr.io\/pterodactyl\/yolks:java_16",
+    "Java 11": "ghcr.io\/pterodactyl\/yolks:java_11",
+    "Java 8": "ghcr.io\/pterodactyl\/yolks:java_8"
+  },
+  "file_denylist": [],
+  "startup": "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true $( [[  ! -f unix_args.txt ]] && printf %s \"-jar {{SERVER_JARFILE}}\" || printf %s \"@unix_args.txt\" )",
+  "config": {
+    "files": "{\r\n    \"server.properties\": {\r\n        \"parser\": \"properties\",\r\n        \"find\": {\r\n            \"server-ip\": \"0.0.0.0\",\r\n            \"server-port\": \"{{server.build.default.port}}\",\r\n            \"query.port\": \"{{server.build.default.port}}\"\r\n        }\r\n    }\r\n}",
+    "startup": "{\r\n    \"done\": \")! For help, type \"\r\n}",
+    "logs": "{}",
+    "stop": "stop"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!\/bin\/bash\r\n#\r\n# Server Files: \/mnt\/server\r\nfunction unix_args {\r\nisUnix=$(find .\/libraries\/net\/minecraftforge\/forge\/*\/ -maxdepth 1 -name 'unix_args.txt')\r\nif [ ${isUnix} ]\r\nthen\r\nln -sf libraries\/net\/minecraftforge\/forge\/*\/unix_args.txt unix_args.txt\r\nelse\r\nfind .\/ -maxdepth 1 -name 'forge*.jar' -exec mv {} .\/server.jar \\;\r\nfi\r\nrm run.bat run.sh start.sh forge*installer.jar fabric*installer.jar\r\n}\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server || exit\r\nrm -rf * .*\r\necho -e \"Install requirement...\"\r\napt update\r\napt install -y curl unzip jq\r\necho -e \"Download modpack installer... ${DOWNLOAD_URL}\"\r\ncurl -L -o .\/file.zip \"${DOWNLOAD_URL}\"\r\necho -e \"Unzip file...\"\r\nunzip .\/file.zip\r\necho -e \"Remove zip...\"\r\nrm .\/file.zip\r\necho -e \"Check if subfolder...\"\r\nissubfolder=$(ls | wc -l)\r\nif [ \"${issubfolder}\" -eq 1 ]\r\nthen\r\nmv *\/* .\/\r\nfi\r\necho -e \"Detect type of modpack...\"\r\nisForge=$(find .\/ -maxdepth 1 -name 'forge*universal.jar')\r\nisMinecraft=$(find .\/ -maxdepth 1 -name 'minecraft_server.jar')\r\nisForgeFile=$(find .\/ -maxdepth 1 -name 'Forge.jar')\r\nisForgeInstallerFile=$(find .\/bin\/ -maxdepth 1 -name 'modpack.jar')\r\nisForgeInstallerFileAtRoot=$(find .\/ -maxdepth 1 -name 'forge*installer.jar')\r\nisLibs=$(find .\/ -maxdepth 1 -type d -name \"libraries\")\r\necho \"Modpack detection done.\"\r\nif [ \"${isForge}\" ]\r\nthen\r\necho -e \"Forge launch file found\"\r\necho -e \"Rename Files...\"\r\nfind .\/ -maxdepth 1 -name 'forge*universal.jar' -exec mv {} server.jar \\;\r\nelif [ \"${isMinecraft}\" ]\r\nthen\r\necho -e \"Minecraft launch file found\"\r\necho -e \"Rename Files...\"\r\nfind .\/ -maxdepth 1 -name 'minecraft_server.jar' -exec mv {} server.jar \\;\r\necho -e \"Remove zip...\"\r\nrm .\/file.zip\r\nelif [ \"${isForgeFile}\" ]\r\nthen\r\necho -e \"Minecraft launch file found\"\r\necho -e \"Rename Files...\"\r\nfind .\/ -maxdepth 1 -name 'Forge.jar' -exec mv {} server.jar \\;\r\nelif [ \"${isForgeInstallerFile}\" ]\r\nthen\r\nisMinecraftFile=$(find .\/bin\/ -maxdepth 1 -name 'minecraft.jar')\r\nif [ \"${isMinecraftFile}\" ]\r\nthen\r\nmv bin\/* .\/\r\nrm -rf bin\r\ndownloadversion=${jq -r '.id' version.json | tr --delete Forge}\r\ndata=\"https:\/\/maven.minecraftforge.net\/net\/minecraftforge\/forge\/${downloadversion}\/forge-${downloadversion}-installer.jar\"\r\ncurl -o .\/installer.jar \"${data}\"\r\njava -jar installer.jar --installServer\r\nrm .\/installer.jar\r\necho -e \"Rename Files...\"\r\nunix_args\r\nelse\r\necho -e \"Forge installer file found in bin folder\"\r\necho -e \"Move Files...\"\r\nmv .\/bin\/modpack.jar .\/\r\njava -jar modpack.jar --installServer\r\nunix_args\r\nfi\r\nelif [ \"${isForgeInstallerFileAtRoot}\" ]\r\nthen\r\necho -e \"Forge installer file found in at root folder\"\r\njava -jar forge*installer.jar --installServer\r\nrm forge*installer.jar\r\nunix_args\r\nelse\r\nif [ ${isLibs} ]\r\nthen\r\necho -e \"Rename Files...\"\r\nunix_args\r\nelse\r\necho -e \"Nothing known found install the ${LOADER} for the version ${MCVERSION} manually...\"\r\nif [ \"${LOADER}\" == \"Fabric\" ]\r\nthen\r\ncurl -L -o .\/server.jar \"https:\/\/api.bagou450.com\/api\/client\/pterodactyl\/modpacks\/getFabric?version=${MCVERSION}\"\r\nunix_args\r\nelse\r\ncurl -L -o .\/forge-${MCVERSION}-installer.jar \"https:\/\/api.bagou450.com\/api\/client\/pterodactyl\/modpacks\/getForge?version=${MCVERSION}\"\r\njava -jar forge*installer.jar --installServer\r\nrm forge*installer.jar\r\nunix_args\r\nfi\r\nfi\r\nfi\r\necho -e \"Remove zip...\"\r\n#rm .\/file.zip LaunchServer.bat LaunchServer.sh run.bat run.sh start.sh start.bat ServerLinux.sh ServerWindows.sh server-start.sh server-start.bash\r\necho -e \"Installation complete!\"",
+      "container": "openjdk:8-jdk-slim",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Modpack download URL",
+      "description": "the download url of the modpack",
+      "env_variable": "DOWNLOAD_URL",
+      "default_value": "http:\/\/downloads.gtnewhorizons.com\/ServerPacks\/GT_New_Horizons_2.2.8_SERVER.zip",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string",
+      "field_type": "text"
+    },
+    {
+      "name": "Server Jar File",
+      "description": "The name of the Jarfile to use when running Forge version below 1.17.",
+      "env_variable": "SERVER_JARFILE",
+      "default_value": "server.jar",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|regex:\/^([\\w\\d._-]+)(\\.jar)$\/",
+      "field_type": "text"
+    },
+    {
+      "name": "Minecraft Version",
+      "description": "Minecraft Version",
+      "env_variable": "MCVERSION",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string",
+      "field_type": "text"
+    },
+    {
+      "name": "Loader",
+      "description": "Loader",
+      "env_variable": "LOADER",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string|max:20",
+      "field_type": "text"
+    }
+  ]
+}

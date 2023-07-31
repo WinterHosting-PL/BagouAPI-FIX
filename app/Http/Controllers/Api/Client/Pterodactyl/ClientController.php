@@ -29,10 +29,12 @@ class ClientController extends Controller
 
         $result = $this->licenseService->checkLicense($transaction , $id , $ip , true);
         if ($result === 'SUCCESS') {
+            $license = License::where('license', $transaction)->firstOrFail();
             return [
                 'message' => 'done' ,
-                'name' => '585' ,
-                'fullname' => 'Cloud Servers' ,
+                'name' =>  $license->product_id,
+                'fullname' => $license->product->name,
+                'version' => $license->version,
                 'blacklisted' => false
             ];
         } else {
@@ -41,12 +43,30 @@ class ClientController extends Controller
             ] , 400);
         };
     }
+    public function checkLicenseCloud(Request $request)
+    {
 
+        $result = $this->licenseService->checkLicense($request->id , 585 , $request->ip() , true);
+        if ($result === 'SUCCESS') {
+            $license = License::where('license', $request->id)->firstOrFail();
+            return [
+                'message' => 'done' ,
+                'name' =>  $license->product_id,
+                'fullname' => $license->product->name,
+                'version' => $license->version,
+                'blacklisted' => false
+            ];
+        } else {
+            return response()->json([
+                'message' => $result
+            ] , 400);
+        };
+    }
     public function getLicense(Request $request)
     {
         $validator = Validator::make($request->all() , [
             'id' => 'required' ,
-            'name' => 'required' ,
+            'selectaddon' => 'required' ,
         ]);
         if ($validator->fails()) {
             return response()->json([
@@ -54,7 +74,8 @@ class ClientController extends Controller
                 'errors' => $validator->errors() ,
             ] , 400);
         }
-        $result = $this->licenseService->getDetails($request->id , $request->name , $request->ip() , false , true);
+
+        $result = $this->licenseService->getDetails($request->id , $request->selectaddon , $request->ip() , false , true);
         switch ($result) {
             case LicenseService::LICENSE_NOT_FOUND:
                 return response()->json([
@@ -90,7 +111,7 @@ class ClientController extends Controller
                         'blacklisted' => $result->blacklisted ,
                         'usage' => $result->usage ,
                         'maxusage' => $result->maxusage ,
-                        'version' => Products::where('id' , '=' , $result->name)->firstOrFail()['version']
+                        'version' => Products::where('id' , '=' , $result->product_id)->firstOrFail()['version']
                     );
                 }
 

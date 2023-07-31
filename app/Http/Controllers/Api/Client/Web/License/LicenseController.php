@@ -34,13 +34,14 @@ class LicenseController extends BaseController
                 $ips[] = Crypt::decrypt($ip);
             }
             $doneLicenses[] = [
-            'product' => $license->product->name,
-            'ip' => $ips,
-            'maxusage' => $license->maxusage,
-            'license' => $license->license,
-            'usage' => $license->usage,
-            'version' => $license->version,
-            'order_id' => $license->order_id,
+                'product' => $license->product->name,
+                'product_id' => $license->product->id,
+                'ip' => $ips,
+                'maxusage' => $license->maxusage,
+                'license' => $license->license,
+                'usage' => $license->usage,
+                'version' => $license->version,
+                'order_id' => $license->order_id,
         ];
         }
         return response()->json(
@@ -151,7 +152,7 @@ class LicenseController extends BaseController
                 return response()->json(['status' => 'error', 'message' => 'A unexcepted error happend.'], 500);
             }
         } else if($request->type === 'bbb') {
-            $headers = ['Authorization' => 'Private qczw7mGhTWp6wQGFWAPeqqJBIz8Jfd+D', 'Content-Type' => 'application/json'];
+            $headers = ['Authorization' => 'Private PwtlefsFmrs/Clah1rLB2kdd6zvr6UgO', 'Content-Type' => 'application/json'];
             $licenses = array();
             $addonlist = Products::where('licensed', '=', true)->get();
             foreach($addonlist as $addon) {
@@ -165,21 +166,23 @@ class LicenseController extends BaseController
                     if($user) {
                         License::where('bbb_license', '=', $license['license_id'])->where('bbb_id', '=', $addon->bbb_id)->update(['user_id' => $user->id]);
                     }
+                    $license['productname'] = $addon->name;
+
                     array_push($licenses, $license);
                 } else {
 
                     $transaction = '5LB094126U433992N';
-                    while(!$transaction or License::where("transaction", '=', $transaction)->first()) {
+                    while(!$transaction or License::where("license", '=', $transaction)->first()) {
                         $bytes = random_bytes(32);
                         $transaction = "bgxb_" . bin2hex($bytes);
                     }
 
-                    $license = ['blacklisted' => false, "sxcid" => null, 'buyer' => $request->userid, 'fullname' => $addon->name, 'ip' => [], 'maxusage' => 2, 'name' => $addon->id, 'transaction' => $transaction, 'usage' => 0, "buyerid" => 500, 'bbb_id' => $addon->bbb_id, 'bbb_license' => $license['license_id']];
+                    $license = ['blacklisted' => false, "sxcid" => null, 'product_id' => $addon->id, 'ip' => [], 'maxusage' => 2, 'license' => $transaction, 'usage' => 0, 'bbb_id' => $addon->bbb_id, 'bbb_license' => $license['license_id']];
                     if($user) {
-                        array_push($license, ['user_id' => $user->id]);
+                        $license['user_id'] = $user->id;
                     }
                     License::create($license);
-
+                    $license['productname'] = $addon->name;
                     array_push($licenses, $license);
                 }
             }
@@ -188,8 +191,8 @@ class LicenseController extends BaseController
             if(count($licenses) > 0) {
                 $message = "Hey\nThanks for your purchase!\nYou asked your license from my website.\nHere are your licenses :\n";
                 foreach($licenses as $license) {
-                    $name = $license->fullname;
-                    $id = $license->transaction;
+                    $name = $license['productname'];
+                    $id = $license['license'];
                     $message = "$message -$name: $id\n";
                     
                 }
@@ -232,7 +235,47 @@ public function encryptAllIPs()
 
     return response()->json(['status' => 'success', 'message' => 'All IPs encrypted successfully'], 200);
 }
+    /**
+     *
+     * Reset a license
+     * @return \Illuminate\Http\JsonResponse
+     */
+public function resetLicense(License $license) {
+    $user = auth('sanctum')->user();
+    if (!$user || $license->user_id !== $user->id) {
+        return response()->json(['status' => 'error', 'message' => 'Unauthorized!'], 500);
+    }
+    $license->usage = 0;
+    $license->ip = [];
+    $license->save();
+    return response()->json(['status' => 'success', 'message' => 'License was reseted successfully'], 200);
+}
+    /**
+     *
+     * Link License to a account
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function licenseLink(String $license) {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized!'], 500);
+        }
+        $license = License::where('license', $license)->first();
+        if(!$license) {
+            return response()->json(['status' => 'error', 'message' => 'License not found!'], 404);
+        }
+        if($license->user_id) {
+            if($license->user_id === $user->id) {
+                return response()->json(['status' => 'error', 'message' => 'You already own this license!'], 500);
 
+            }
+            return response()->json(['status' => 'error', 'message' => 'License already linked to another account!'], 500);
+        }
+        $license->user_id = $user->id;
+        $license->save();
+        return response()->json(['status' => 'success', 'message' => 'License added successfully!'], 200);
+
+    }
 }
 
 

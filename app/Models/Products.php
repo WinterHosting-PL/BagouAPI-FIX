@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Znck\Eloquent\Traits\BelongsToThrough;
 use Pterodactyl\Contracts\Extensions\HashidsInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -55,7 +56,13 @@ class Products extends Model
         'tag',
         'description',
         'link',
-        'price'
+        'price',
+        'icon',
+        'hide',
+        'extension',
+        'stripe_id',
+        'stripe_price_id',
+        'extension_product'
     ];
     /**
      * Cast values to correct type.
@@ -75,6 +82,21 @@ class Products extends Model
         'tag' => 'string',
         'description' => 'string',
         'link' => 'json',
-        'price' => 'float'
+        'icon' => 'string',
+        'hide' => 'boolean',
+        'price' => 'float',
+        'extension' => 'boolean',
+        'stripe_id' => 'string',
+        'stripe_price_id' => 'string',
+        'extension_product' => 'integer'
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+    public function extension_product(): BelongsTo
+    {
+        return $this->belongsTo(Products::class, 'extension_product');
+    }
 }

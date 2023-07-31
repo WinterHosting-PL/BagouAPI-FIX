@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminBlogController;
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminCategoryController;
+use App\Http\Controllers\Api\Client\Web\Admin\Licenses\LicensesController;
 use App\Http\Controllers\Api\Client\Web\Admin\Users\AdminUsersController;
 use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
 use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
+use App\Http\Controllers\Api\Client\Web\License\LicenseController;
 use App\Http\Controllers\ClientController;
 use Illuminate\Http\Request;
 use Illuminate\Support\FacadesRoute;
@@ -57,8 +59,13 @@ Route::prefix('client')->group(function () {
             Route::prefix('products')->group(function () {
                 Route::get('/', [ProductsController::class, 'listProducts']);
                 Route::post('/create', [ProductsController::class, 'createProduct']);
-                Route::put('/{id}', [ProductsController::class, 'updateProduct']);
+                Route::post('/{id}', [ProductsController::class, 'updateProduct']);
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
+            });
+            Route::prefix('licenses')->group(function () {
+                Route::get('/', [LicensesController::class, 'listLicenses']);
+                Route::post('/reset/{license}', [LicensesController::class, 'resetLicense']);
+                Route::post('/blacklist/{license}', [LicensesController::class, 'licenseBlacklist']);
             });
                Route::prefix('users')->group(function () {
                    Route::get('/', [AdminUsersController::class, 'get']);
@@ -140,6 +147,10 @@ Route::prefix('client')->group(function () {
             Route::get('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'get'])->middleware('auth:sanctum');
             //Send a email with license to the user
             Route::post('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'sendLicense'])->middleware('auth:sanctum');
+            //Reset license
+            Route::post('/reset/{id}', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'resetLicense'])->middleware('auth:sanctum');
+            //Link a license to a account
+            Route::post('/link/{id}', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'licenseLink'])->middleware('auth:sanctum');
             //Delete a license usage
             Route::delete('/{license}', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'deleteIp'])->middleware('auth:sanctum');
             Route::get('/encryptAllIPs', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'encryptAllIPs'])->middleware('auth:sanctum');
@@ -155,7 +166,7 @@ Route::prefix('client')->group(function () {
     Route::get('/getVersion', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getVersion']);
     
     Route::get('/checkIfExist', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkIfExist']);
-    Route::get('/checklicense', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checklicense']);
+    Route::get('/checklicense', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkLicenseCloud']);
 
     Route::post('/license', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getLicense']);
 

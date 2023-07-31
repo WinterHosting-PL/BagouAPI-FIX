@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Api\Client\Pterodactyl;
 
+use App\Services\LicenseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\License;
 use App\Models\ModsResult;
 use App\Models\ModsVersionsResult;
+use Illuminate\Routing\Controller as BaseController;
 
 class McModsController extends BaseController
 {
     public function getMcMods(Request $request)
     {
-        $clientController = new ClientController();
-        $license = $clientController->checkLicense($request->id, 257, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() !== 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 257 , $request->ip());
+        if ($license['message'] !== 'done' ) {
             return $license;
         }
 
@@ -27,146 +31,77 @@ class McModsController extends BaseController
             $request->game_versions = false;
         }
 
-        $data = ModsResult::where(['page' => $request->page, 'type' => $request->type])->first();
 
-        if ($data && $request->search === '' && !$request->game_versions && !$request->loaders) {
-            if ($data->updated_at->diffInHours(now()) < 24) {
+       /* if (!$request->search && !$request->game_versions && !$request->loaders) {
+            $data = ModsResult::where(['page' => $request->page, 'type' => $request->type])->first();
+            if ($data && $data->updated_at->diffInHours(now()) < 24) {
                 return $data->result;
             }
         }
-
+*/
         if ($request->type === 'curseforge') {
             $cursekey = config('api.cursekey');
             $headers = [
                 'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.81 Safari/537.36',
                 'x-api-key' => $cursekey
             ];
-
+            $data = [
+                'index' => $request->page * 20 - 20,
+                'pageSize' => 20,
+                'gameId' => 432,
+                'classId' => 6,
+                'searchFilter' => $request->search,
+                'sortField' => 2,
+                'sortOrder' => 'desc'
+            ];
             if ($request->loaders) {
                 $maj = 1;
-
                 if ($request->loaders === 'fabric') {
                     $maj = 4;
                 }
-
-                if (!$request->game_versions) {
-                    $addons = Http::accept('application/json')
-                        ->withHeaders($headers)
-                        ->get('https://api.curseforge.com/v1/mods/search', [
-                            'index' => $request->page * 20 - 20,
-                            'pageSize' => 20,
-                            'gameId' => 432,
-                            'classId' => 6,
-                            'searchFilter' => $request->search,
-                            'sortField' => 2,
-                            'sortOrder' => 'desc'
-                        ])
-                        ->object()
-                        ->data;
-                } else {
-                    $addons = Http::accept('application/json')
-                        ->withHeaders($headers)
-                        ->get('https://api.curseforge.com/v1/mods/search', [
-                            'index' => $request->page * 20 - 20,
-                            'pageSize' => 20,
-                            'gameId' => 432,
-                            'classId' => 6,
-                            'searchFilter' => $request->search,
-                            'sortField' => 2,
-                            'sortOrder' => 'desc',
-                            'gameVersion' => $request->game_versions,
-                            'modLoaderType' => $maj
-                        ])
-                        ->object()
-                        ->data;
-                }
-            } else if ($request->game_versions) {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.curseforge.com/v1/mods/search', [
-                        'index' => $request->page * 20 - 20,
-                        'pageSize' => 20,
-                        'gameId' => 432,
-                        'classId' => 6,
-                        'searchFilter' => $request->search,
-                        'sortField' => 2,
-                        'sortOrder' => 'desc',
-                        'gameVersion' => $request->game_versions
-                    ])
-                    ->object()
-                    ->data;
-            } else {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.curseforge.com/v1/mods/search', [
-                        'index' => $request->page * 20 - 20,
-                        'pageSize' => 20,
-                        'gameId' => 432,
-                        'classId' => 6,
-                        'searchFilter' => $request->search,
-                        'sortField' => 2,
-                        'sortOrder' => 'desc'
-                    ])
-                    ->object()
-                    ->data;
+                $data['modLoaderType'] = $maj;
             }
+            if($request->game_versions) {
+                $data['gameVersion'] = $request->game_versions;
+
+            }
+                $addons = Http::accept('application/json')
+                    ->withHeaders($headers)
+                    ->get('https://api.curseforge.com/v1/mods/search', $data)
+                    ->object()
+                    ->data;
         } else if ($request->type === 'modrinth') {
             $headers = [
                 'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.81 Safari/537.36'
             ];
-
+            $data = [
+                'offset' => $request->page * 20 - 20,
+                'limit' => 20,
+                'query' => $request->search,
+            ];
             if ($request->game_versions && $request->loaders) {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.modrinth.com/v2/search', [
-                        'offset' => $request->page * 20 - 20,
-                        'limit' => 20,
-                        'query' => $request->search,
-                        'facets' => "[[\"categories:$request->loaders\"],[\"versions:$request->game_versions\"],[\"project_type:mod\"]]"
-                    ])
-                    ->object()
-                    ->hits;
+                $data['facets'] = "[[\"categories:$request->loaders\"],[\"versions:$request->game_versions\"],[\"project_type:mod\"]]";
             } else if ($request->game_versions) {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.modrinth.com/v2/search', [
-                        'offset' => $request->page * 20 - 20,
-                        'limit' => 20,
-                        'query' => $request->search,
-                        'facets' => "[[\"versions:$request->game_versions\"],[\"project_type:mod\"]]"
-                    ])
-                    ->object()
-                    ->hits;
+                $data['facets'] = "[[\"versions:$request->game_versions\"],[\"project_type:mod\"]]";
+
             } else if ($request->loaders) {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.modrinth.com/v2/search', [
-                        'offset' => $request->page * 20 - 20,
-                        'limit' => 20,
-                        'query' => $request->search,
-                        'facets' => "[[\"categories:$request->loaders\"],[\"project_type:mod\"]]"
-                    ])
-                    ->object()
-                    ->hits;
+                $data['facets'] = "[[\"categories:$request->loaders\"],[\"project_type:mod\"]]";
+
             } else {
-                $addons = Http::accept('application/json')
-                    ->withHeaders($headers)
-                    ->get('https://api.modrinth.com/v2/search', [
-                        'offset' => $request->page * 20 - 20,
-                        'limit' => 20,
-                        'query' => $request->search,
-                        'facets' => "[[\"project_type:mod\"]]"
-                    ])
-                    ->object()
-                    ->hits;
+                $data['facets'] = "[[\"project_type:mod\"]]";
             }
+            $addons = Http::accept('application/json')
+                ->withHeaders($headers)
+                ->get('https://api.modrinth.com/v2/search', $data)
+                ->object()
+                ->hits;
         } else {
             return response()->json([
                 'message' => 'Invalid request.'
             ], 400);
         }
 
-        if ($request->search === '') {
+        if (!$request->search && !$request->loaders && !$request->game_versions) {
             ModsResult::where('page', '=', $request->page)
                 ->where('type', '=', $request->type)
                 ->delete();
@@ -183,10 +118,13 @@ class McModsController extends BaseController
 
     public function getMcModsVersions(Request $request)
     {
-        $clientController = new ClientController();
-        $license = $clientController->checkLicense($request->id, 257, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() !== 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 257 , $request->ip());
+
+        if ($license['message'] !== 'done' ) {
             return $license;
         }
 
@@ -266,10 +204,13 @@ class McModsController extends BaseController
 
     public function getMcModsDescription(Request $request)
     {
-        $clientController = new ClientController();
-        $license = $clientController->checkLicense($request->id, 257, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() !== 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 257 , $request->ip());
+
+        if ($license['message'] !== 'done' ) {
             return $license;
         }
 
@@ -308,10 +249,13 @@ class McModsController extends BaseController
 
     public function getMcVersions(Request $request)
     {
-        $clientController = new ClientController();
-        $license = $clientController->checkLicense($request->id, 257, $request->ip());
+        $licenseService = app(LicenseService::class);
 
-        if ($license->getStatusCode() !== 200) {
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 257 , $request->ip());
+
+        if ($license['message'] !== 'done' ) {
             return $license;
         }
 
