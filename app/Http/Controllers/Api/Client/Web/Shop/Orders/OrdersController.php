@@ -24,22 +24,39 @@ class OrdersController extends BaseController
     {
         $user = auth('sanctum')->user();
         if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
+            return response()->json(['status' => 'error', 'message' => 'You need to be authenticated'], 500);
         }
-        $order = array();
-        $orders = Orders::select('status', 'price', 'products', 'stripe_id', 'id')->where('user_id', '=', $user->id)->get();
-        if(!$orders) {
-            return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'orders' => null]], 200);
-        }
-        foreach ($orders as $ord) {
-            $addons = array();
-            foreach($ord->products as $addon) {
-               $addons[] = Products::where('id', '=', $addon)->select('name')->firstOrFail();
 
+        $perPage = 10; // Nombre d'éléments par page
+        $currentPage = $request->input('page', 1); // Récupère le numéro de page à partir de la requête
+
+        $ordersQuery = Orders::select('status', 'price', 'products', 'stripe_id', 'id')
+            ->where('user_id', '=', $user->id);
+
+        $orders = $ordersQuery->paginate($perPage, ['*'], 'page', $currentPage);
+
+        if ($orders->isEmpty()) {
+            return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'total' => 0, 'orders' => null]], 200);
+        }
+
+        $order = [];
+
+        foreach ($orders as $ord) {
+            $addons = [];
+            foreach ($ord->products as $addon) {
+                $addons[] = Products::where('id', '=', $addon)->select('name')->firstOrFail();
             }
             $order[] = ['products' => $addons, 'price' => $ord->price, 'status' => $ord->status, 'order_id' => $ord->id, 'stripe_id' => $ord->stripe_id];
         }
-        return response()->json(['status' => 'success', 'data' => ['user' => $user->name, 'orders' => $order]], 200);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'user' => $user->name,
+                'total' => $orders->total(),
+                'orders' => $order,
+            ],
+        ], 200);
 
     }
 
@@ -66,7 +83,7 @@ class OrdersController extends BaseController
             return response()->json(['status' => 'error', 'message' => 'You need to be authentificated'], 500);
         }
         if (!$user->address || !$user->country || !$user->city || !$user->region || !$user->postal_code) {
-            return response()->json(['status' => 'error', 'message' => 'You need to link a adress to your account.'], 500);
+            return response()->json(['status' => 'error', 'message' => 'You need to link a address to your account.'], 500);
         }
         $allproducts = $request->products;
         if($request->extension) {

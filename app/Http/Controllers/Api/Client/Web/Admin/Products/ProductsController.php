@@ -257,8 +257,7 @@ class ProductsController extends Controller
         $product->description = $request->input('description');
         $product->hide = $request->input('hide');
         $product->extension = $request->input('extension');
-        $product->extension_product = $request->input('extension_product') ? $request->input('extension_product') : '';
-
+        $product->extension_product = $request->input('extension_product') ? $request->input('extension_product') : null;
 
         // Mettez à jour d'autres champs si nécessaire
         $product->save();

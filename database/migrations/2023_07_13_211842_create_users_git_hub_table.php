@@ -16,12 +16,13 @@ return new class extends Migration
            Schema::create('users_github', function(Blueprint $table) {
            $table->id();
            $table->timestamps();
-           $table->integer('user_id')->unsigned();
            $table->string('username');
            $table->string('github_id');
            $table->string('avatar');
            $table->string('plan');
-           $table->foreign('user_id')
+               $table->integer('user_id')->unsigned();
+
+               $table->foreign('user_id')
                ->references('id')
                ->on('users');
         });

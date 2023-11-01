@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminBlogController;
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminCategoryController;
 use App\Http\Controllers\Api\Client\Web\Admin\Licenses\LicensesController;
 use App\Http\Controllers\Api\Client\Web\Admin\Users\AdminUsersController;
+use App\Http\Controllers\Api\Client\Web\Auth\PasskeysController;
 use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
 use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
 use App\Http\Controllers\Api\Client\Web\License\LicenseController;
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::prefix('client')->group(function () {
     Route::prefix('web')->group(function () {
+        Route::post('/sendContact', [App\Http\Controllers\Api\Client\Web\ClientController::class, 'sendContact']);
         Route::prefix('addons')->group(function () {
             Route::get('/get', [App\Http\Controllers\Api\Client\Web\AddonsController::class, 'get']);
             Route::get('/getone', [App\Http\Controllers\Api\Client\Web\AddonsController::class, 'getone']);
@@ -88,14 +90,24 @@ Route::prefix('client')->group(function () {
             Route::post('/register', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'register']);
             Route::post('/tokenlogin', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'tokenlogin']);
             Route::get('/tokendata', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'tokendata']);
+            Route::get('/isAccount', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'isAccount']);
 
             Route::post('/logout', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'logout'])->middleware('auth:sanctum');
             Route::post('/verify', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'sendverificationemail'])->middleware('auth:sanctum');
             Route::get('/isLogged', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'isLogged']);
 
+            //Passkeys
+            Route::prefix('passkeys')->group(function () {
+                Route::get('/options', [PasskeysController::class, 'createOptions']);
+                Route::post('/add', [PasskeysController::class, 'addPasskey']);
+                Route::post('/use', [PasskeysController::class, 'validateKey']);
+                Route::post('/verification', [PasskeysController::class, 'sendVerificationForAddPassKey']);
+
+            });
+
             //Oauth
             Route::post('/oauthlogin', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthlogin']);
-            Route::get('/oauthloginCallback', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthloginCallback']);
+                 Route::get('/oauthloginCallback', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthloginCallback']);
 
             /* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
                  return 'test';

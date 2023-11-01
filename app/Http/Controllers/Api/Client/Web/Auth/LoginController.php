@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Auth;
 
+use App\Models\Discount;
 use App\Models\UserDiscord;
 use App\Models\UserGitHub;
 use App\Models\UserGoogle;
@@ -19,39 +20,34 @@ use App\Mail\LoginEmail;
 use Laravel\Passport\Guards\TokenGuard;
 use Laravel\Passport\Token;
 use Laravel\Passport\PersonalAccessToken;
+use Rawilk\Webauthn\Models\WebauthnKey;
 
 class LoginController extends Controller
 {
     public function register(Request $request): \Illuminate\Http\JsonResponse
     {
-        if (User::where('email', '=', $request->email)->exists()) {
+
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'name' => ['required']
+        ]);
+        if (User::where('email', '=', $credentials['email'])->exists()) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This email was already taked.'
             ], 500);
         }
-        if (User::where('name', '=', $request->name)->exists()) {
+        if (User::where('name', '=', $credentials['name'])->exists()) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This username was already taked.'
             ], 500);
         }
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'name' => ['required']
-        ]);
-        $user = User::create([
+        User::create([
             'name' => $credentials['name'],
             'email' => $credentials['email'],
         ]);
 
-        $rand_str = bin2hex(random_bytes(128));
-        while (User::where('login_token', '=', $rand_str)->exists()) {
-            $rand_str = bin2hex(random_bytes(128));
-        }
-        User::where('id', '=', $user->id)->update(['login_token' => $rand_str]);
-        Mail::to($user->email)
-            ->send(new LoginEmail($rand_str));
         return response()->json([
             'status' => 'success',
         ], 200);
@@ -69,32 +65,58 @@ class LoginController extends Controller
         if ($user) {
             return response()->json(['status' => 'error', 'message' => 'You are already logged!.'], 500);
         }
-        if (!User::where('email', '=', $request->email)->exists()) {
+        $user = User::where('email', '=', $request->email)->orWhere('name', '=', $request->email)->Orwhere('email', '=', "$request->email@gmail.com")->first();
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This username was not found in our database.'
             ], 500);
         }
 
-        $credentials = array(
-            'email' => $request->email,
-        );
-        $rand_str = bin2hex(random_bytes(128));
-        while (User::where('login_token', '=', $rand_str)->exists()) {
             $rand_str = bin2hex(random_bytes(128));
-        }
+            while (User::where('login_token', '=', $rand_str)->exists()) {
+                $rand_str = bin2hex(random_bytes(128));
+            }
 
-        User::where('email', '=', $request->email)->update(['login_token' => $rand_str]);
-        Mail::to($request->email)
-            ->send(new LoginEmail($rand_str));
-        return response()->json([
-            'status' => 'success',
-        ], 200);
+            $user->update(['login_token' => $rand_str]);
+            $user->save();
+            try {
+                Mail::to($request->email)
+                    ->send(new LoginEmail($rand_str));
+            } catch(\Exception $e) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Error during email sending.'
+                ], 500);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'email'
+            ], 200);
+
+
     }
-
     /**
      * @param Request $request
-     * @return void
+     * @return \Illuminate\Http\JsonResponse
+     * Check if a account exist
+     */
+   public function isAccount(Request $request) {
+       if (!User::where('email', '=', $request->email)->orWhere('name', '=', $request->email)->Orwhere('email', '=', "$request->email@gmail.com")->exists()) {
+           return response()->json([
+               'status' => 'error',
+               'message' => 'This username was not found in our database.'
+           ], 500);
+       }
+       return response()->json([
+           'status' => 'success',
+           'message' => 'User found!'
+       ]);
+   }
+    /**
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      * Login the user trough token
      */
     public function TokenLogin(Request $request)
@@ -157,6 +179,17 @@ class LoginController extends Controller
     public function isLogged(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = auth('sanctum')->user();
+        $discount = Discount::first();
+        if($discount) {
+            $discount = [
+                'status' => true,
+                'code' => $discount->code,
+                'value' => $discount->value
+            ];
+        } else {
+            $discount = ['status' => false];
+        }
+
         if ($user) {
             if (!$request->infos) {
                 return response()->json([
@@ -201,11 +234,11 @@ class LoginController extends Controller
                     'discord' => $discordUser,
                     'google' => $googleUser,
                     'github' => $githubUser
-                ]], 200);
+                ], 'discount' => $discount], 200);
 
         }
         return response()->json([
-            'status' => false, 'data' => []
+            'status' => false, 'data' => [], 'discount' => $discount
         ], 200);
 
     }

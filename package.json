@@ -10,5 +10,9 @@
         "lodash": "^4.17.19",
         "postcss": "^8.1.14",
         "vite": "^3.0.0"
+    },
+    "dependencies": {
+        "clsx": "^2.0.0",
+        "react-cookie-consent": "^9.0.0"
     }
 }

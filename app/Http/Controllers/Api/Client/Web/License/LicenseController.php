@@ -16,17 +16,28 @@ use App\Http\Controllers\Api\Client\Web\License\LicenseResource;
 
 class LicenseController extends BaseController
 {
-    public function get(): \Illuminate\Http\JsonResponse {
+    public function get(Request $request): \Illuminate\Http\JsonResponse {
 
         $user = auth('sanctum')->user();
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
         }
 
-        $licenses = License::where('user_id', '=', $user->id)->get();
-        if($user->role === 1) {
-            License::where('user_id', '=', $user->id);
+        $licensesQuery = License::query();
+        if($user->role !== 1) {
+            $licensesQuery->where('user_id', '=', $user->id);
         }
+        $search = $request->search;
+        if ($search) {
+            $licensesQuery->where(function ($query) use ($search) {
+                $query->where('ip', 'LIKE', '%' . $search . '%')
+                    ->orWhere('license', 'LIKE', '%' . $search . '%')
+                    ->orWhere('user_id', 'LIKE', '%' . $search . '%');
+            });
+        }
+        $page = $request->page ?? 1;
+        $total = $licensesQuery->count();
+        $licenses = $licensesQuery->paginate(10, ['*'], 'page', $page);
         $doneLicenses = [];
         foreach($licenses as $license) {
             $ips = [];
@@ -47,6 +58,7 @@ class LicenseController extends BaseController
         return response()->json(
             ['status' => 'success', 'data' =>
                 ['user' => $user->name,
+                    'total' => $total,
                     'license' => $doneLicenses]], 200);
         
     }
@@ -242,7 +254,7 @@ public function encryptAllIPs()
      */
 public function resetLicense(License $license) {
     $user = auth('sanctum')->user();
-    if (!$user || $license->user_id !== $user->id) {
+    if (!$user || ($license->user_id !== $user->id && $user->role !== 1)) {
         return response()->json(['status' => 'error', 'message' => 'Unauthorized!'], 500);
     }
     $license->usage = 0;

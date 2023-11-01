@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://privatewebsite.bagou450.com','https://beta.bagou450.com','https://bagou450.com'],
+    'allowed_origins' => ['https://privatewebsite.bagou450.com','https://beta.bagou450.com','https://bagou450.com', 'http://127.0.0.1:8080'],
 
     'allowed_origins_patterns' => [],
 

@@ -30,6 +30,10 @@ class User extends Authenticatable
         'firstname',
         'lastname',
         'login_token',
+        'webauthn_public_key',
+        'webauthn_challenge',
+        'passkey_token',
+        'passkey_tmp',
         'role'
     ];
 
@@ -73,6 +77,15 @@ class User extends Authenticatable
         return $this->getKey();
     }
 
+    /*
+     * Get the passkey of the user
+     *
+     * @return array
+     */
+    public function getPassKey()
+    {
+        return [$this->webauthn_public_key, $this->webauthn_challenge];
+    }
     /**
      * Return a key value array, containing any custom claims to be added to the JWT.
      *

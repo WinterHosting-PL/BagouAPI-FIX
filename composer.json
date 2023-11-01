@@ -5,18 +5,20 @@
     "keywords": ["framework", "laravel"],
     "license": "MIT",
     "require": {
-        "php": "^8.0.2",
+        "php": "^8.1.23",
         "barryvdh/laravel-dompdf": "^2.0",
         "doctrine/dbal": "^3.6",
         "fabpot/goutte": "^4.0",
         "google/apiclient": "^2.14",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^2.7",
-        "laravel/framework": "^9.19",
+        "laravel/framework": "^10.2.6",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.7",
         "mollie/mollie-api-php": "^2.0",
         "php-open-source-saver/jwt-auth": "^2.0",
+        "rawilk/laravel-webauthn": "^1.0",
+        "web-auth/cose-lib": "^4.2",
         "weidner/goutte": "^2.2"
     },
     "require-dev": {
@@ -24,9 +26,9 @@
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.0.1",
         "mockery/mockery": "^1.4.4",
-        "nunomaduro/collision": "^6.1",
-        "phpunit/phpunit": "^9.5.10",
-        "spatie/laravel-ignition": "^1.0"
+        "nunomaduro/collision": "^7.0",
+        "phpunit/phpunit": "^10.0",
+        "spatie/laravel-ignition": "^2.3.1"
     },
     "autoload": {
         "psr-4": {

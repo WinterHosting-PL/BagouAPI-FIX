@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Client\Web\Admin\Licenses;
 use App\Models\License;
 use App\Models\Products;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class LicensesController
 {
