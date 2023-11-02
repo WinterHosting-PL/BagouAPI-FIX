@@ -2,7 +2,19 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Auth;
 
+use App\Mail\ContactEmail;
+use App\Mail\InvoiceMail;
+use App\Mail\OrderConfirmed;
+use App\Mail\PassKeyEmail;
+use App\Mail\ProductDownloadEmail;
+use App\Mail\ProductUpdateMail;
+use App\Mail\TicketCreatedMail;
+use App\Mail\TicketMessageAddedMail;
+use App\Mail\TicketStatusUpdatedMail;
+use App\Mail\WelcomeEmail;
 use App\Models\Discount;
+use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Models\UserDiscord;
 use App\Models\UserGitHub;
 use App\Models\UserGoogle;
@@ -48,6 +60,16 @@ class LoginController extends Controller
             'email' => $credentials['email'],
         ]);
 
+        try {
+            Mail::to($credentials['email'])
+                ->send(new WelcomeEmail());
+        } catch(\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error during email sending.'
+            ], 500);
+        }
+
         return response()->json([
             'status' => 'success',
         ], 200);
@@ -73,9 +95,9 @@ class LoginController extends Controller
             ], 500);
         }
 
-            $rand_str = bin2hex(random_bytes(128));
+            $rand_str = bin2hex(random_bytes(16));
             while (User::where('login_token', '=', $rand_str)->exists()) {
-                $rand_str = bin2hex(random_bytes(128));
+                $rand_str = bin2hex(random_bytes(16));
             }
 
             $user->update(['login_token' => $rand_str]);

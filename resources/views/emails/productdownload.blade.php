@@ -12,7 +12,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Bagou450 - New messages</title>
+    <title>Bagou450 - Your downloads are ready!</title>
 
     <!-- Google Fonts Link -->
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
@@ -75,6 +75,7 @@
                 <!--[if (gte mso 9)|(IE)]><table align="center" border="0" cellspacing="0" cellpadding="0" style="width:600px;" width="600"><tr><td align="center" valign="top"><![endif]-->
 
 
+
                 <!-- Email Wrapper Header Open //-->
                 <table border="0" cellpadding="0" cellspacing="0" style="max-width:600px;" width="100%" class="wrapperWebview">
                     <tr>
@@ -113,7 +114,7 @@
                                     <td align="center" valign="top" style="padding-bottom:40px" class="imgHero">
                                         <!-- Hero Image // -->
                                         <a href="#" target="_blank" style="text-decoration:none;">
-                                            <img src="https://cdn.bagou450.com/assets/img/mail/user-chat.png" width="600" alt="" border="0" style="width:100%; max-width:600px; height:auto; display:block;" />
+                                            <img src="https://cdn.bagou450.com/assets/img/mail/notification-download.png" width="600" alt="" border="0" style="width:100%; max-width:600px; height:auto; display:block;" />
                                         </a>
                                     </td>
                                 </tr>
@@ -122,7 +123,7 @@
                                     <td align="center" valign="top" style="padding-bottom:5px;padding-left:20px;padding-right:20px;" class="mainTitle">
                                         <!-- Main Title Text // -->
                                         <h2 class="text" style="color:#000000; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:28px; font-weight:600; font-style:normal; letter-spacing:normal; line-height:36px; text-transform:none; text-align:center; padding:0; margin:0">
-                                            You have a new message!
+                                            Your download are ready!
                                         </h2>
                                     </td>
                                 </tr>
@@ -131,43 +132,42 @@
                                     <td align="center" valign="top" style="padding-bottom:30px;padding-left:20px;padding-right:20px;" class="subTitle">
                                         <!-- Sub Title Text // -->
                                         <h4 class="text" style="color:#999999; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:18px; font-weight:400; font-style:normal; letter-spacing:normal; line-height:26px; text-transform:none; text-align:center; padding:0; margin:0">
-                                            A new answer has been sent to your ticket
+                                            You can find your product on your customer space
                                         </h4>
                                     </td>
                                 </tr>
 
                                 <tr>
                                     <td align="center" valign="top" style="padding-left:20px;padding-right:20px;" class="containtTable">
-
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="tableMediumTitle">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="tableDescription">
                                             <tr>
-                                                <td align="center" valign="top" style="padding-bottom:20px;" class="mediumTitle">
-                                                    <!-- Medium Title Text // -->
-                                                    <p class="text" style="color:#000000; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:18px; font-weight:600; font-style:normal; letter-spacing:normal; line-height:26px; text-transform:none; text-align:center; padding:0; margin:0">
-                                                        You have a new answer on your ticket #{{ $ticket->id }} - {{ $ticket->name }}.
+                                                <td align="center" valign="top" style="padding-bottom:20px;" class="description">
+                                                    <!-- Description Text// -->
+                                                    <p class="text" style="color:#666666; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:14px; font-weight:400; font-style:normal; letter-spacing:normal; line-height:22px; text-transform:none; text-align:center; padding:0; margin:0">
+                                                        Your order was traited you can now download your product. Notice that you can download your product at anytime on your client space.
                                                     </p>
                                                 </td>
                                             </tr>
                                         </table>
 
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="tableButton">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="tableButtonDate">
                                             <tr>
-                                                <td align="center" valign="top" style="padding-top:20px;padding-bottom:20px;">
-
+                                                <td align="center" valign="top" style="padding-top:20px;padding-bottom:5px;">
                                                     <!-- Button Table // -->
                                                     <table align="center" border="0" cellpadding="0" cellspacing="0">
                                                         <tr>
                                                             <td align="center" class="ctaButton" style="background-color:#003CE5;padding-top:12px;padding-bottom:12px;padding-left:35px;padding-right:35px;border-radius:50px">
                                                                 <!-- Button Link // -->
-                                                                <a class="text" href="https://bagou450.com/account/tickets/{{ $ticket->id }}" target="_blank" style="color:#FFFFFF; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:13px; font-weight:700; font-style:normal;letter-spacing:1px; line-height:20px; text-transform:uppercase; text-decoration:none; display:block">
-                                                                    Reply Now
+                                                                <a class="text" href="https://bagou450.com/account/orders" target="_blank" style="color:#FFFFFF; font-family:'Open Sans', Helvetica, Arial, sans-serif; font-size:13px; font-weight:700; font-style:normal;letter-spacing:1px; line-height:20px; text-transform:uppercase; text-decoration:none; display:block">
+                                                                    Download Now
                                                                 </a>
                                                             </td>
                                                         </tr>
                                                     </table>
-
                                                 </td>
                                             </tr>
+
+                                            <
                                         </table>
 
                                     </td>

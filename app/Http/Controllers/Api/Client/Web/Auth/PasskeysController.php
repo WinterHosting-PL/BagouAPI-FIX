@@ -66,7 +66,10 @@ class PasskeysController extends Controller
 
         ]);
         $user = User::where('email', $credentials['email'])->firstOrFail();
-        $passkey_token = bin2hex(random_bytes(16));
+        $passkey_token = substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6);
+        while(User::where('passkey_token', '=', $passkey_token)->exists()) {
+            $passkey_token = substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6);
+        };
         $user->passkey_token = $passkey_token;
         $user->passkey_tmp = $credentials['data'];
         $user->save();
