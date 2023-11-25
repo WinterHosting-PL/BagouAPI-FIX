@@ -148,7 +148,7 @@ Route::prefix('client')->group(function () {
             Route::get('/downloadInvoiceLink/{order}', [OrdersController::class, 'downloadInvoiceLink'])->name('orders.downloadInvoicelink');
             Route::get('/downloadInvoice/{order}', [OrdersController::class, 'downloadInvoice'])->name('orders.downloadInvoice');
         });
-        Route::group(['prefix' => 'shop', 'middleware' => 'auth'], function () {
+        Route::group(['prefix' => 'shop'], function () {
             Route::post('/create', [App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController::class, 'create']);
             Route::get('/status', [App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController::class, 'updatestatus']);
     

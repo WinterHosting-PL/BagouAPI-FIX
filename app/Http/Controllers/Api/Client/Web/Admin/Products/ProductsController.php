@@ -67,6 +67,9 @@ class ProductsController extends Controller
             'autoinstaller' => 'required|boolean',
             'recurrent' => 'required|boolean',
             'tab' => 'required|boolean',
+            'slug' => 'required',
+            'category' => 'required',
+            'isWings' => 'required|boolean',
             'tabroute' => 'nullable',
             'description' => 'required',
             'logo' => 'required|file|mimes:webp',
@@ -83,6 +86,9 @@ class ProductsController extends Controller
 
         $productName = $request->input('name');
         $productTag = $request->input('tag');
+        $productisWings = $request->input('isWings');
+        $productSlug = $request->input('slug');
+        $productCat = $request->input('category');
         $productVersion = $request->input('version');
         $productPrice = $request->input('price');
         $productSxcName = $request->input('sxcname');
@@ -150,6 +156,7 @@ class ProductsController extends Controller
             'link' => $productLink,
             'licensed' => $productLicensed,
             'new' => $productNew,
+            'isWings' => $pproductisWings,
             'autoinstaller' => $productAutoInstaller,
             'recurrent' => $productRecurrent,
             'tab' => $productTab,
@@ -160,6 +167,8 @@ class ProductsController extends Controller
             'icon' => $logoUrl,
             'hide' => $productHide,
             'extension' => $productExtension,
+            'slug' => $productSlug,
+            'category' => $productCat,
             'extension_product' => $productExtensionProduct
         ]);
 
@@ -179,8 +188,11 @@ class ProductsController extends Controller
         $this->validate($request, [
             'name' => 'required',
             'tag' => 'required',
+            'slug' => 'required',
+            'category' => 'required',
             'version' => 'required',
             'price' => 'required|numeric',
+            'isWings' => 'required|boolean',
             'sxcname' => 'required',
             'bbb_id' => 'required',
             'link' => 'required',
@@ -233,8 +245,10 @@ class ProductsController extends Controller
                 'unit_amount' => $request->input('price') * 100, // Le prix est en centimes
                 'currency' => 'eur',
             ]);
+
             if ($response->failed()) {
-                return response()->json(['status' => 'error', 'message' => 'Failed to create product price on Stripe'], 500);
+
+                return response()->json(['status' => 'error', 'message' => 'Failed to create product price on Stripe', 'data' => print_r($response)], 500);
             }
 
             $stripePrice = $response->json();
@@ -244,6 +258,9 @@ class ProductsController extends Controller
         $product->name = $request->input('name');
         $product->tag = $request->input('tag');
         $product->version = $request->input('version');
+        $product->slug = $request->input('slug');
+        $product->category = $request->input('category');
+        $product->isWings = $request->input('isWings');
         $product->price = $request->input('price');
         $product->sxcname = $request->input('sxcname');
         $product->bbb_id = $request->input('bbb_id');

@@ -39,13 +39,13 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $url = $this->getBukkitUrl($request);
             $plugins = $this->scrapePlugins($url);
 
             return $plugins;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -56,13 +56,12 @@ class PluginsController extends BaseController
         $clientController = new ClientController($licenseService);
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
-
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $plugins = $this->getSpigotPlugins($request);
 
             return $plugins;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -74,12 +73,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $plugins = $this->getPolymartPlugins($request);
 
             return $plugins;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -91,12 +90,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $plugins = $this->getCustomPlugins($request);
 
             return $plugins;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -108,12 +107,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $versions = $this->getPluginVersions($request);
 
             return $versions;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -125,12 +124,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $versions = $this->getMinecraftVersions($request);
 
             return $versions;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -142,12 +141,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $categories = $this->getPluginCategories($request);
 
             return $categories;
         } else {
-            return $license;
+            return [];
         }
     }
 
@@ -159,12 +158,12 @@ class PluginsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 326 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $url = $this->getDownloadUrl($request);
 
             return ['url' => $url, 'success' => true];
         } else {
-            return $license;
+            return [];
         }
     }
 

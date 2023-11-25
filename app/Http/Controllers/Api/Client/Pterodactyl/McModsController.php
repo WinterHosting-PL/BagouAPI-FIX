@@ -19,7 +19,7 @@ class McModsController extends BaseController
         $clientController = new ClientController($licenseService);
 
         $license = $clientController->checkLicense($request->id , 257 , $request->ip());
-        if ($license['message'] !== 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             return $license;
         }
 
@@ -124,7 +124,7 @@ class McModsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 257 , $request->ip());
 
-        if ($license['message'] !== 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             return $license;
         }
 
@@ -210,7 +210,7 @@ class McModsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 257 , $request->ip());
 
-        if ($license['message'] !== 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             return $license;
         }
 
@@ -255,7 +255,7 @@ class McModsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 257 , $request->ip());
 
-        if ($license['message'] !== 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             return $license;
         }
 

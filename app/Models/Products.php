@@ -62,7 +62,9 @@ class Products extends Model
         'extension',
         'stripe_id',
         'stripe_price_id',
-        'extension_product'
+        'extension_product',
+        'slug',
+        'category'
     ];
     /**
      * Cast values to correct type.
@@ -88,7 +90,9 @@ class Products extends Model
         'extension' => 'boolean',
         'stripe_id' => 'string',
         'stripe_price_id' => 'string',
-        'extension_product' => 'integer'
+        'extension_product' => 'integer',
+        'slug' => 'string',
+        'category' => 'string'
     ];
 
     public function user(): BelongsTo

@@ -43,7 +43,7 @@ class McModPacksController extends BaseController
 
         $clientController = new ClientController($licenseService);
         $license = $clientController->checkLicense($request->id , 327 , $request->ip());
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $loaders = $request->loaders ?? false;
             $gameVersions = $request->game_versions ?? false;
 
@@ -119,7 +119,7 @@ public function getMcModPacksVersions(Request $request)
 
     $license = $clientController->checkLicense($request->id , 327 , $request->ip());
 
-    if ($license['message'] === 'done' ) {
+    if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
         $data = $this->modsVersionsService->getModVersionsFromCache($request->page, $request->modId, $request->type);
         if ($data && $request->search == '') {
             return $data;
@@ -159,7 +159,7 @@ public function getMcModPacksVersions(Request $request)
     $clientController = new ClientController($licenseService);
 
     $license = $clientController->checkLicense($request->id , 327 , $request->ip());
-    if ($license['message'] === 'done' ) {
+    if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
 
         if ($request->type == 'curseforge') {
             $description = $this->modPacksService->getCurseForgeModpackDescription($request->modpackId);
@@ -185,7 +185,7 @@ public function getMcModPacksVersions(Request $request)
         $clientController = new ClientController($licenseService);
 
         $license = $clientController->checkLicense($request->id , 327 , $request->ip());
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $versions = Http::get('https://launchermeta.mojang.com/mc/game/version_manifest.json')->json();
             $releases = array();
             foreach ($versions['versions'] as $version) {
@@ -207,7 +207,7 @@ public function getMcModPacksVersions(Request $request)
 
         $license = $clientController->checkLicense($request->id , 327 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             if ($request->type === 'voidswrath') {
                 $dataHeaders = get_headers($request->data, true);
                 $contentLength = isset($dataHeaders['Content-Length']) ? $dataHeaders['Content-Length'] : null;
@@ -292,7 +292,7 @@ public function getMcModPacksVersions(Request $request)
         $clientController = new ClientController($licenseService);
 
         $license = $clientController->checkLicense($request->id , 327 , $request->ip());
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
         $filePath = "../modpacksegg/$request->type.json";
 
         if (File::exists($filePath)) {

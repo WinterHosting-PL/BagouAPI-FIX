@@ -29,7 +29,9 @@ class License extends Model
         'version',
         'user_id',
         'order_id',
+        'buyerid',
         'bbb_license',
+        'buyer',
         'bbb_id',
         'sxcid'
     ];

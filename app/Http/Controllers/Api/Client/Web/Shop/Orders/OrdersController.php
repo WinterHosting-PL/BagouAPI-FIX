@@ -62,7 +62,7 @@ class OrdersController extends BaseController
 
 
 
-    public function create(Request $request): \Illuminate\Http\JsonResponse
+    public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'products' => 'required|array',
@@ -122,7 +122,7 @@ class OrdersController extends BaseController
                 $data['mode'] = 'subscription';
                 $data['line_items'] = [[
                     'price' => $productdata->stripe_price_id,
-                    'quantity' => 1,
+                    'quantity' => 1
                 ]];
                 $data['customer_creation'] = null;
                 break;
@@ -208,7 +208,7 @@ class OrdersController extends BaseController
 
     }
 
-    public function updatestatus(): \Illuminate\Http\JsonResponse
+    public function updatestatus()
     {
         /*
          * Update status of all orders
@@ -237,7 +237,7 @@ class OrdersController extends BaseController
                             $bytes = random_bytes(32);
                             $transaction = "bgxw_" . bin2hex($bytes);
                         }
-                        $license = ['blacklisted' => false, 'user_id' => $user->id, 'product_id' => $product, 'ip' => [], 'maxusage' => 2, 'license' => $transaction, 'usage' => 0, 'order_id' => $order->id];
+                        $license = ['blacklisted' => false, 'buyerid' => 500, 'user_id' => $user->id, 'buyer' => $user->firstname . ' ' . $user->lastname, 'product_id' => $product, 'ip' => [], 'maxusage' => 2, 'license' => $transaction, 'usage' => 0, 'order_id' => $order->id];
                         License::create($license);
                         $license = $transaction;
                     }

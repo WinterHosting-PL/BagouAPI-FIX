@@ -32,8 +32,7 @@ class McVersionsController extends BaseController
         $clientController = new ClientController($licenseService);
 
         $license = $clientController->checkLicense($request->id , 296 , $request->ip());
-
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $versions = null;
 
             $validStypes = [
@@ -88,7 +87,7 @@ class McVersionsController extends BaseController
 
         $license = $clientController->checkLicense($request->id , 296 , $request->ip());
 
-        if ($license['message'] === 'done' ) {
+        if (gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
             $url = '';
 
             $nozipStypes = [
@@ -115,6 +114,11 @@ class McVersionsController extends BaseController
                 $url = str_replace(' ', '%20', $url);
                 $headers = get_headers($url, true);
                 $contentLength = isset($headers['Content-Length']) ? $headers['Content-Length'] : null;
+                if(!$contentLength) {
+                    if(isset($headers['content-length'])) {
+                        $contentLength = $headers['content-length'];
+                    }
+                }
                 return response()->json([
                     'message' => 'Good',
                     'data' => $url,

@@ -27,7 +27,10 @@ class AddonsController extends BaseController
         if($request->search !== '' && $request->search) {
             $addons->where('name', 'like', "%$request->search%")->orWhere('description', 'like', "%$request->search%")->orWhere('tag', 'like', "%$request->search%");
         }
-        $addons = $addons->get();
+        if($request->category !== '' && $request->category) {
+            $addons->where('category', 'like', "%$request->category%");
+        }
+        $addons = $addons->select('Id', 'name', 'new', 'tag', 'slug', 'category', 'price', 'icon')->get();
         $page = ceil(count($addons)/$request->perpage);
 
         $addons = array_slice($addons->toArray(), $request->page*$request->perpage-$request->perpage, $request->perpage );
@@ -40,7 +43,7 @@ class AddonsController extends BaseController
         * She use "id" parameters.
         */
         $user = auth('sanctum')->user();
-        $product = Products::where('id', '=', $request->id)->first();
+        $product = Products::where('slug', '=', $request->id)->first();
         if(!$product) {
             return ['status' => 'error', 'message' => 'No product found'];
         }
