@@ -91,10 +91,8 @@ class LicenseController extends BaseController
         return response()->json(['status' => 'error', 'message' => 'License is not owned by the logged user.'], 500);
     } 
     public function sendLicense(Request $request): \Illuminate\Http\JsonResponse {
-           $user = auth('sanctum')->user();
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'You need to be logged!.'], 500);
-        }
+        $user = auth('sanctum')->user();
+
         
         $key = config('api.sxckey');
         if($request->type === 'ssx') {
@@ -154,8 +152,13 @@ class LicenseController extends BaseController
                 }
             }
             if(count($licenses) > 0) {
-                Mail::to($request->userid)
-                    ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
+                if(!$user ) {
+                    Mail::to($user->email)
+                        ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
+                } else {
+                    Mail::to($request->userid)
+                        ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
+                }
                 Mail::to('receipts@bagou450.com')
                     ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
                     return response()->json(['status' => 'success'], 200);
@@ -212,8 +215,7 @@ class LicenseController extends BaseController
 
                 $test = Http::withHeaders($headers)->withBody(json_encode(["recipient_ids" => array(intval($request->userid)), "title" => "Bagou450 - Your License key", "message" => $message]), 'application/json')->post('https://api.builtbybit.com/v1/conversations');
 
-                Mail::to('receipts@bagou450.com')
-                    ->send(new TestMail('Bagou450', 'Cloud Servers', $licenses));
+
                 return response()->json(['status' => 'success'], 200);
             } else {
                 return response()->json(['status' => 'error', 'message' => 'A unexcepted error happend.'], 500);

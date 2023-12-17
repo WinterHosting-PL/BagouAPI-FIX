@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Admin\Blog;
 
+use App\Mail\ProductUpdateMail;
 use App\Models\Blog;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\Facades\Image;
-
+use App\Mail\BlogPostEmail;
 class AdminBlogController
 {
     public function create(Request $request) {
@@ -66,7 +69,17 @@ class AdminBlogController
             $blog->pictures = json_encode($pictures);
 
             $blog->save();
+            $users = User::where('newsletter', 1)->get();
+        foreach($users as $user) {
+            try {
+                Mail::to($user->email)
+                    ->send(new BlogPostEmail($blog->title, $blog->slug));
+            } catch (\Exception $e) {
+                continue;
+            }
 
+
+        }
             return response()->json(['status' => 'success', 'message' => 'Blog created successfully'], 201);
 
     }

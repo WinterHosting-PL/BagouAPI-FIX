@@ -63,4 +63,7 @@ class Orders extends Model
         'postal_code' => 'string',
         'name' => 'string'
     ];
+    public function user() {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api\Client\Web\Admin\Users;
 
+use App\Models\Mailinglist;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Infomaniak\ClientApiNewsletter\Action;
+use Infomaniak\ClientApiNewsletter\Client;
 
 class AdminUsersController
 {
@@ -79,4 +82,26 @@ class AdminUsersController
     return response()->json(['status' => 'success', 'message' => 'User updated successfully.']);
 
   }
+  public function syncInfomaniak() {
+      $user = auth('sanctum')->user();
+
+      if (!$user || $user->role !== 1) {
+          return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+      }
+      $users = User::all();
+      $contact = [];
+      foreach($users as $user) {
+          $contact[] = ['email' => $user->email];
+      }
+      $client = new Client(config('services.infomaniak.api') , config('services.infomaniak.secret'));
+      $client->post(Client::MAILINGLIST , [
+          'id' => Mailinglist::first()->infomaniak_id ,
+          'action' => Action::IMPORTCONTACT ,
+          'params' => [
+              'contacts' => $contact
+          ]
+      ]);
+      return response()->json(['status' => 'success', 'message' => 'User updated successfully.']);
+  }
+
 }

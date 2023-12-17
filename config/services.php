@@ -56,5 +56,9 @@ return [
         'redirect' => env('DISCORD_OAUTH_REDIRECTION_URL'),
         'accountredirect' => env('DISCORD_ACCOUNT_REDIRECTION_URL')
     ],
-
+    'infomaniak' => [
+        'api' => env('INFOMANIAK_KEY'),
+        'secret' => env("INFOMANIAK_SECRET"),
+        'key' => env('INFOMANIAK_V3Key')
+    ]
 ];

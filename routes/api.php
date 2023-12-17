@@ -1,19 +1,19 @@
 <?php
 
+use App\Http\Controllers\Api\Client\Web\Account\TicketController;
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminBlogController;
 use App\Http\Controllers\Api\Client\Web\Admin\Blog\AdminCategoryController;
 use App\Http\Controllers\Api\Client\Web\Admin\Licenses\LicensesController;
+use App\Http\Controllers\Api\Client\Web\Admin\Products\ProductsController;
 use App\Http\Controllers\Api\Client\Web\Admin\Users\AdminUsersController;
 use App\Http\Controllers\Api\Client\Web\Auth\PasskeysController;
 use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
 use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
-use App\Http\Controllers\Api\Client\Web\License\LicenseController;
+use App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController;
 use App\Http\Controllers\ClientController;
 use Illuminate\Http\Request;
 use Illuminate\Support\FacadesRoute;
-use App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController;
-use App\Http\Controllers\Api\Client\Web\Admin\Products\ProductsController;
-use App\Http\Controllers\Api\Client\Web\Account\TicketController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -72,6 +72,8 @@ Route::prefix('client')->group(function () {
                Route::prefix('users')->group(function () {
                    Route::get('/', [AdminUsersController::class, 'get']);
                    Route::post('/{id}', [AdminUsersController::class, 'edit']);
+
+                   Route::get('/syncInfomaniak', [AdminUsersController::class, 'syncInfomaniak']);
                });
         });
 
@@ -119,6 +121,7 @@ Route::prefix('client')->group(function () {
         });
         Route::prefix('account')->group(function () {
             Route::get('/getinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getinfos'])->middleware('auth:sanctum');
+            Route::get('/getNewsinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getNewsinfos'])->middleware('auth:sanctum');
             Route::get('/discord/login', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'discordLogin']);
             Route::get('/discord/callback', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'discordCallback']);
             Route::get('/discord/get', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getDiscordUser']);
@@ -126,6 +129,8 @@ Route::prefix('client')->group(function () {
 
             Route::post('/edit', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'edit'])->middleware('auth:sanctum');
             Route::post('/editinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'editinfos'])->middleware('auth:sanctum');
+            Route::post('/editNewsInfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'editNewsInfos'])->middleware('auth:sanctum');
+
             //Oauth
 
             Route::post('/oauth', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'oauthlogin']);
@@ -158,7 +163,7 @@ Route::prefix('client')->group(function () {
             //Return List of user license 
             Route::get('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'get'])->middleware('auth:sanctum');
             //Send a email with license to the user
-            Route::post('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'sendLicense'])->middleware('auth:sanctum');
+            Route::post('/', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'sendLicense']);
             //Reset license
             Route::post('/reset/{id}', [App\Http\Controllers\Api\Client\Web\License\LicenseController::class, 'resetLicense'])->middleware('auth:sanctum');
             //Link a license to a account
@@ -217,8 +222,12 @@ Route::prefix('client')->group(function () {
         Route::get('/getEgg',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getEgg']);
         Route::get('/getForge',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'forgeDownload']);
         Route::get('/getFabric',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'fabricDownload']);
-
-        
     });
+
+        Route::prefix('subdomains')->group(function () {
+            Route::post('/', [\App\Http\Controllers\Api\Client\Pterodactyl\SubdomainController::class, 'createRecord']);
+            Route::delete('/', [\App\Http\Controllers\Api\Client\Pterodactyl\SubdomainController::class, 'deleteRecord']);
+
+        });
 });
 });

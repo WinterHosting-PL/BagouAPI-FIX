@@ -281,9 +281,11 @@ class ProductsController extends Controller
         if ($request->hasFile('zip')) {
             $orders = Orders::where('status', 'completed')->whereJsonContains('products', $product->id)->get();
             foreach($orders as $order) {
-                $userEmail = $order->user->email;
-                Mail::to($userEmail)
-                    ->send(new ProductUpdateMail($product->id, $product->name, $order->user->name));
+                if($order->user->newsletter) {
+                    $userEmail = $order->user->email;
+                    Mail::to($userEmail)
+                        ->send(new ProductUpdateMail($product->id, $product->name, $order->user->name));
+                }
             }
         }
         return response()->json(['status' => 'success', 'message' => 'Product updated', 'data' => $product]);

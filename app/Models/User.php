@@ -29,6 +29,7 @@ class User extends Authenticatable
         'phone_number',
         'firstname',
         'lastname',
+        'newsletter',
         'login_token',
         'webauthn_public_key',
         'webauthn_challenge',

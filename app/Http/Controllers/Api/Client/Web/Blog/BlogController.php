@@ -27,8 +27,10 @@ class BlogController {
 
 
     }
-    public function get(Blog $blog)
+    public function get(String $slug)
     {
+        $blog = Blog::where('slug', $slug)->firstOrFail();
+
         return response()->json(['status' => 'success', 'data' => new BlogResource($blog)], 200);
     }
 
