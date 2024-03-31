@@ -300,6 +300,10 @@ class LoginController extends Controller
                 '?client_id=' . config('services.github.client_id') .
                 '&redirect_uri=' . $redirectUri .
                 '&scope=read:user%20user:email';
+        } else if ( $request->type === 'patreon') {
+            $response = 'https://www.patreon.com/oauth2/authorize?response_type=code' .
+                '&client_id=' . config('services.patreon.client_id') .
+                '&redirect_uri=' . $redirectUri;
         }
 
         return response()->json(['status' => 'success' , 'data' => ['url' => "$response"]]);
@@ -566,6 +570,9 @@ class LoginController extends Controller
                     'access_token' => $rand_str ,
                     'token_type' => 'Bearer' , 'google_id' => $profile->id ,
                 ]]);
+        }
+        if($request->type === 'patreon') {
+        $token = $request->token;
         }
 
         return response()->json(['status' => 'error' , 'message' => 'Unable to know what type of Oauth use.'] , 500);

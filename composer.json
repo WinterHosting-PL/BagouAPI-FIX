@@ -23,7 +23,8 @@
         "rawilk/laravel-webauthn": "^1.0",
         "saddamrhossain/namecheap-sdk": "^1.0",
         "web-auth/cose-lib": "^4.2",
-        "weidner/goutte": "^2.2"
+        "weidner/goutte": "^2.2",
+      "ext-xmlwriter": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

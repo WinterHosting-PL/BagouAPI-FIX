@@ -13,6 +13,27 @@ use Illuminate\Http\Request;
 
 class SubdomainController extends Controller
 {
+    public function getList(Request $request) {
+        $licenseService = app(LicenseService::class);
+
+        $clientController = new ClientController($licenseService);
+
+        $license = $clientController->checkLicense($request->id , 326 , $request->ip());
+
+        if ( gettype($license) === 'array' && isset($license['message']) && $license['message'] === 'done' ) {
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'cloudflare' => ['title' => 'CloudFlare', 'secret' => false, 'consumer' => false],
+                    'daddy' => ['title' => 'GoDaddy', 'secret' => true, 'consumer' => false],
+                    'ovh' => ['title' => 'OVH', 'secret' => true, 'consumer' => true],
+                    'name' => ['title' => 'Name.com', 'secret' => true, 'consumer' => false],
+                    'namecheap' => ['title' => 'NameCheap', 'secret' => true, 'consumer' => false]
+                ]
+            ]);
+        }
+        return response()->json(['status' => 'error' , 'message' => 'Invalid License.']);
+    }
 
     public function createRecord(Request $request)
     {
@@ -40,9 +61,9 @@ class SubdomainController extends Controller
                 return $subdomain->create($request);
             }
             return response()->json(['status' => 'errror' , 'message' => 'Malformed request'] , 500);
-        } else {
-            return response()->json(['status' => 'error' , 'message' => 'Invalid License.']);
         }
+        return response()->json(['status' => 'error' , 'message' => 'Invalid License.']);
+
 
 
     }
@@ -72,9 +93,8 @@ class SubdomainController extends Controller
                 return $subdomain->delete($request);
             }
             return response()->json(['status' => 'errror' , 'message' => 'Malformed request'] , 500);
-        } else {
-            return response()->json(['status' => 'error' , 'message' => 'Invalid License.']);
         }
+        return response()->json(['status' => 'error' , 'message' => 'Invalid License.']);
     }
 
 

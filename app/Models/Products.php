@@ -4,8 +4,7 @@ namespace App\Models;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Znck\Eloquent\Traits\BelongsToThrough;
-use Pterodactyl\Contracts\Extensions\HashidsInterface;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -102,5 +101,20 @@ class Products extends Model
     public function extension_product(): BelongsTo
     {
         return $this->belongsTo(Products::class, 'extension_product');
+    }
+    public function descriptions(): HasMany
+    {
+        return $this->hasMany(ProductsDescription::class, 'product_id');
+    }
+    public function getDescription(string $language): object|null
+    {
+        return $this->descriptions()->where('language', $language)->select('description','language','tag')->first();
+    }
+    public function isOwnedBy(User $user): bool
+    {
+        return Orders::where('status', 'complete')
+            ->where('user_id', $user->id)
+            ->whereJsonContains('products', $this->id)
+            ->exists();
     }
 }

@@ -98,10 +98,6 @@ class OvhService
             'api' => [
                 'required',
                 Rule::in(['eu', 'us','ca']),
-            ],
-            'recordType' => [
-                'required',
-                Rule::in(['A', 'AAAA','CNAME','SRV']),
             ]
         ]);
         try {

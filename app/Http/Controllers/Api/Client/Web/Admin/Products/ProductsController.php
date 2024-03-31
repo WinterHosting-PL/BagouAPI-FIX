@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Mail\ProductUpdateMail;
 use App\Models\Orders;
 use App\Models\Products;
+use App\Models\ProductsDescription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use XMLWriter;
 
 class ProductsController extends Controller
 {
@@ -40,6 +42,7 @@ class ProductsController extends Controller
         $total = ceil($productsQuery->count()/$perPage);
         $products = $productsQuery->skip(($page - 1) * $perPage)
             ->take($perPage)
+            ->with('descriptions')
             ->get();
 
         return response()->json(['status' => 'success', 'data' => $products, 'total' => $total]);
@@ -56,7 +59,6 @@ class ProductsController extends Controller
     {
         $this->validate($request, [
             'name' => 'required',
-            'tag' => 'required',
             'version' => 'required',
             'price' => 'required|numeric',
             'sxcname' => 'required',
@@ -71,11 +73,14 @@ class ProductsController extends Controller
             'category' => 'required',
             'isWings' => 'required|boolean',
             'tabroute' => 'nullable',
-            'description' => 'required',
             'logo' => 'required|file|mimes:webp',
             'zip' => 'required|file|mimes:zip',
             'extension' => 'required|boolean',
             'extension_product' => 'nullable',
+            'descriptions' => 'required|array',
+            'descriptions.*.language' => 'required|string',
+            'descriptions.*.description' => 'required|string',
+            'descriptions.*.tag' => 'required|string',
             'hide' => 'required|boolean'
         ]);
 
@@ -85,7 +90,8 @@ class ProductsController extends Controller
         }
 
         $productName = $request->input('name');
-        $productTag = $request->input('tag');
+        $productTag = '';
+        $productDescriptions = $request->input('descriptions');
         $productisWings = $request->input('isWings');
         $productSlug = $request->input('slug');
         $productCat = $request->input('category');
@@ -100,7 +106,7 @@ class ProductsController extends Controller
         $productRecurrent = $request->input('recurrent');
         $productTab = $request->input('tab');
         $productTabRoute = $request->input('tabroute') ? $request->input('tabroute') : '';
-        $productDescription = $request->input('description');
+        $productDescription = '';
         $productHide = $request->input('hide');
         $productExtension = $request->input('extension');
         $productExtensionProduct = $request->input('extension_product');
@@ -171,7 +177,15 @@ class ProductsController extends Controller
             'category' => $productCat,
             'extension_product' => $productExtensionProduct
         ]);
-
+        foreach($productDescriptions as $description) {
+            ProductsDescription::create([
+                'product_id' => $product->id,
+                'description' => $description->description,
+                'language' => $description->language,
+                'tag' => $description->tag
+            ]);
+        }
+        $product->load('descriptions');
         return response()->json(['status' => 'success', 'message' => 'done', 'data' => $product], 202);
     }
 
@@ -187,7 +201,6 @@ class ProductsController extends Controller
     {
         $this->validate($request, [
             'name' => 'required',
-            'tag' => 'required',
             'slug' => 'required',
             'category' => 'required',
             'version' => 'required',
@@ -202,7 +215,10 @@ class ProductsController extends Controller
             'recurrent' => 'required|boolean',
             'tab' => 'required|boolean',
             'tabroute' => 'nullable',
-            'description' => 'required',
+            'descriptions' => 'required|array',
+            'descriptions.*.language' => 'required|string',
+            'descriptions.*.description' => 'required|string',
+            'descriptions.*.tag' => 'required|string',
             'logo' => 'nullable|file|mimes:webp',
             'zip' => 'nullable|file|mimes:zip',
             'extension' => 'required|boolean',
@@ -256,7 +272,7 @@ class ProductsController extends Controller
             $product->stripe_price_id = $stripePriceId;
         }
         $product->name = $request->input('name');
-        $product->tag = $request->input('tag');
+        $product->tag = '';
         $product->version = $request->input('version');
         $product->slug = $request->input('slug');
         $product->category = $request->input('category');
@@ -271,13 +287,26 @@ class ProductsController extends Controller
         $product->recurrent = $request->input('recurrent');
         $product->tab = $request->input('tab');
         $product->tabroute = $request->input('tabroute') ? $request->input('tabroute') : '';
-        $product->description = $request->input('description');
+        $product->description = '';
         $product->hide = $request->input('hide');
         $product->extension = $request->input('extension');
         $product->extension_product = $request->input('extension_product') ? $request->input('extension_product') : null;
 
-        // Mettez à jour d'autres champs si nécessaire
         $product->save();
+        foreach($request->input('descriptions') as $description) {
+            $desc = $product->getDescription($description['language']);
+            $newdesc = [
+                'product_id' => $product->id,
+                'description' => $description['description'],
+                'language' => $description['language'],
+                'tag' => $description['tag']
+            ];
+            if($desc) {
+                $desc->update($newdesc);
+            } else {
+                ProductsDescription::create($newdesc);
+            }
+        }
         if ($request->hasFile('zip')) {
             $orders = Orders::where('status', 'completed')->whereJsonContains('products', $product->id)->get();
             foreach($orders as $order) {
@@ -352,6 +381,64 @@ class ProductsController extends Controller
         }
 
         return response()->json(['status' => 'success', 'message' => 'Products synchronized with Stripe']);
+    }
+
+    public function googleExport()
+    {
+        $user = auth('sanctum')->user();
+        if (!$user || $user->role !== 1) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $products = Products::all(); // Récupère tous les produits
+
+        $xml = new XMLWriter();
+        $xml->openMemory();
+        $xml->startDocument('1.0', 'UTF-8');
+        $xml->startElement('rss');
+        $xml->writeAttribute('version', '2.0');
+        $xml->writeAttribute('xmlns:g', 'http://base.google.com/ns/1.0');
+        $xml->startElement('channel');
+        $xml->writeElement('title', 'Product Feed');
+        $xml->writeElement('link', 'https://bagou450.com');
+        $xml->writeElement('description', 'List of Bagou450 products');
+        $countries = ["AU", "AT", "BE", "CA", "CZ", "FR", "DE", "IE", "IL", "IT", "JP", "NL", "PL", "RO", "KR", "ES", "CH", "GB", "US"];
+
+        foreach ($products as $product) {
+            if($product->price > 0 && !strpos($product->name, 'License extension')) {
+                $xml->startElement('item');
+                $xml->writeElement('g:id', $product->id);
+                $xml->writeElement('g:title', $product->name);
+                $xml->writeElement('g:description', $product->tag);
+                $xml->writeElement('g:link', "https://bagou450.com/product/" . $product->slug);
+                $xml->writeElement('g:image_link', "https://api.bagou450.com/storage/logos/" . $product->id . '.webp');
+                $xml->writeElement('g:availability', 'in_stock');
+                $xml->writeElement('g:price', $product->price . ' EUR');
+                $xml->writeElement('g:brand', "Bagou450");
+                $xml->writeElement('g:mpn', $product->id);
+                $xml->writeElement('g:product_type', "Pterodactyl modules");
+                $xml->writeElement('g:is_bundle', $product->category == 'Bundles' ? 'yes' : 'no');
+                $xml->writeElement('g:google_product_category', "Software &gt; Computer Software &gt; Business & Productivity Software");
+                foreach($countries as $country) {
+                    $xml->startElement('g:shipping');
+                    $xml->writeElement('g:country', $country);
+                    $xml->writeElement('g:price', '0 EUR');
+                    $xml->endElement();
+                }
+                $xml->endElement();
+            }
+
+        }
+
+        $xml->endElement();
+        $xml->endElement();
+        $xml->endDocument();
+
+        $content = $xml->outputMemory();
+
+        return response($content)
+            ->header('Content-Type', 'application/xml')
+            ->header('Content-Disposition', 'attachment; filename="products.xml"');
     }
 
 }

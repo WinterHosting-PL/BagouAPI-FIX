@@ -26,7 +26,15 @@ class ClientController extends Controller
 
     public function checkLicense(string $transaction , string $id , string $ip)
     {
-
+        if(config('app.env') === 'development') {
+            return [
+                'message' => 'done' ,
+                'name' =>  326,
+                'fullname' => "A product",
+                'version' => 0.00,
+                'blacklisted' => false
+            ];
+        }
         $result = $this->licenseService->checkLicense($transaction , $id , $ip , true);
         if ($result === 'SUCCESS') {
             $license = License::where('license', $transaction)->firstOrFail();

@@ -2,3 +2,5 @@ vendor/
 vendor_back
 .env
 public/pma
+node_modules/
+public/*.zip

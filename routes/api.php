@@ -63,29 +63,31 @@ Route::prefix('client')->group(function () {
                 Route::post('/create', [ProductsController::class, 'createProduct']);
                 Route::post('/{id}', [ProductsController::class, 'updateProduct']);
                 Route::get('/sync', [ProductsController::class, 'syncProducts']);
+                Route::middleware('auth:sanctum')->get('/googleExport', [ProductsController::class, 'googleExport']);
+
             });
             Route::prefix('licenses')->group(function () {
                 Route::get('/', [LicensesController::class, 'listLicenses']);
                 Route::post('/reset/{license}', [LicensesController::class, 'resetLicense']);
                 Route::post('/blacklist/{license}', [LicensesController::class, 'licenseBlacklist']);
             });
-               Route::prefix('users')->group(function () {
-                   Route::get('/', [AdminUsersController::class, 'get']);
-                   Route::post('/{id}', [AdminUsersController::class, 'edit']);
+            Route::prefix('users')->group(function () {
+                Route::get('/', [AdminUsersController::class, 'get']);
+                Route::post('/{id}', [AdminUsersController::class, 'edit']);
 
-                   Route::get('/syncInfomaniak', [AdminUsersController::class, 'syncInfomaniak']);
-               });
+                Route::get('/syncInfomaniak', [AdminUsersController::class, 'syncInfomaniak']);
+            });
         });
 
         Route::prefix('tickets')->group(function () {
-                Route::post('/', [TicketController::class, 'createTicket']);
-                Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
-                Route::post('/{id}/messages', [TicketController::class, 'addMessage']);
-                Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
-                Route::get('/', [TicketController::class, 'getTicketList']);
-                Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
-                Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
-                Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
+            Route::post('/', [TicketController::class, 'createTicket']);
+            Route::post('/{id}/status', [TicketController::class, 'updateTicketStatus']);
+            Route::post('/{id}/messages', [TicketController::class, 'addMessage']);
+            Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
+            Route::get('/', [TicketController::class, 'getTicketList']);
+            Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
+            Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
+            Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
         });
         Route::prefix('auth')->group(function () {
             Route::post('/login', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'login'])->name('login');
@@ -109,15 +111,15 @@ Route::prefix('client')->group(function () {
 
             //Oauth
             Route::post('/oauthlogin', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthlogin']);
-                 Route::get('/oauthloginCallback', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthloginCallback']);
+            Route::get('/oauthloginCallback', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'oauthloginCallback']);
 
             /* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
                  return 'test';
 
                    });*/
-            
+
             Route::get('/sendverificationmail', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'verifyemail'])->middleware('auth:sanctum');
-    
+
         });
         Route::prefix('account')->group(function () {
             Route::get('/getinfos', [App\Http\Controllers\Api\Client\Web\Account\AccountController::class, 'getinfos'])->middleware('auth:sanctum');
@@ -156,7 +158,7 @@ Route::prefix('client')->group(function () {
         Route::group(['prefix' => 'shop'], function () {
             Route::post('/create', [App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController::class, 'create']);
             Route::get('/status', [App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController::class, 'updatestatus']);
-    
+
         });
         //License management
         Route::prefix('license')->group(function () {
@@ -174,60 +176,60 @@ Route::prefix('client')->group(function () {
 
         });
     });
-    
+
     Route::prefix('pterodactyl')->group(function () {
 
-    Route::get('/getautoinstaller', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getAutoInstaller']);
-    Route::get('/checkOnline', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkOnline']);
-    Route::get('/addonsList', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'addonsList']);
-    Route::get('/getVersion', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getVersion']);
-    
-    Route::get('/checkIfExist', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkIfExist']);
-    Route::get('/checklicense', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkLicenseCloud']);
+        Route::get('/getautoinstaller', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getAutoInstaller']);
+        Route::get('/checkOnline', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkOnline']);
+        Route::get('/addonsList', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'addonsList']);
+        Route::get('/getVersion', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getVersion']);
 
-    Route::post('/license', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getLicense']);
+        Route::get('/checkIfExist', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkIfExist']);
+        Route::get('/checklicense', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'checkLicenseCloud']);
+
+        Route::post('/license', [App\Http\Controllers\Api\Client\Pterodactyl\ClientController::class, 'getLicense']);
 
 
-    
-    Route::prefix('plugins')->group(function () {
-        Route::get('/bukkit', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getBukkit']);
-        Route::get('/spigot', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getSpigot']);
-        Route::get('/polymart', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getPolymart']);
-        Route::get('/custom', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getCustom']);
-        Route::get('/getVersions', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getVersions']);
-        Route::get('/getMcVersions', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getMcVersions']);
-        Route::get('/getCategories', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getCategories']);
-        Route::get('/download', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'Download']);
+        Route::prefix('plugins')->group(function () {
+            Route::get('/bukkit', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getBukkit']);
+            Route::get('/spigot', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getSpigot']);
+            Route::get('/polymart', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getPolymart']);
+            Route::get('/custom', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getCustom']);
+            Route::get('/getVersions', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getVersions']);
+            Route::get('/getMcVersions', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getMcVersions']);
+            Route::get('/getCategories', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'getCategories']);
+            Route::get('/download', [App\Http\Controllers\Api\Client\Pterodactyl\PluginsController::class, 'Download']);
 
-        
-    });
-    Route::prefix('mcversions')->group(function () {
-        Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McVersionsController::class, 'getVersions']);
-        Route::get('/download', [App\Http\Controllers\Api\Client\Pterodactyl\McVersionsController::class, 'downloadVersion']);
-    });
-    Route::prefix('mods')->group(function () {
-        Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcMods']);
-        Route::get('/versions', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcModsVersions']);
-        Route::get('/description',[App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcModsDescription']);
-        Route::get('/getMcVersions',[App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcVersions']);
-        
-    });
-    Route::prefix('modpacks')->group(function () {
-        Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacks']);
-        Route::get('/versions', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacksVersions']);
-        Route::get('/description',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacksDescription']);
-        Route::get('/getMcVersions',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcVersions']);
-        Route::get('/getMcModpacksDescription',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModpacksDescription']);
-        Route::get('/download',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'download']);
-        Route::get('/getEgg',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getEgg']);
-        Route::get('/getForge',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'forgeDownload']);
-        Route::get('/getFabric',[App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'fabricDownload']);
-    });
+
+        });
+        Route::prefix('mcversions')->group(function () {
+            Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McVersionsController::class, 'getVersions']);
+            Route::get('/download', [App\Http\Controllers\Api\Client\Pterodactyl\McVersionsController::class, 'downloadVersion']);
+        });
+        Route::prefix('mods')->group(function () {
+            Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcMods']);
+            Route::get('/versions', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcModsVersions']);
+            Route::get('/description', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcModsDescription']);
+            Route::get('/getMcVersions', [App\Http\Controllers\Api\Client\Pterodactyl\McModsController::class, 'getMcVersions']);
+
+        });
+        Route::prefix('modpacks')->group(function () {
+            Route::get('/', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacks']);
+            Route::get('/versions', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacksVersions']);
+            Route::get('/description', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModPacksDescription']);
+            Route::get('/getMcVersions', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcVersions']);
+            Route::get('/getMcModpacksDescription', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getMcModpacksDescription']);
+            Route::get('/download', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'download']);
+            Route::get('/getEgg', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'getEgg']);
+            Route::get('/getForge', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'forgeDownload']);
+            Route::get('/getFabric', [App\Http\Controllers\Api\Client\Pterodactyl\McModPacksController::class, 'fabricDownload']);
+        });
 
         Route::prefix('subdomains')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Client\Pterodactyl\SubdomainController::class, 'getList']);
             Route::post('/', [\App\Http\Controllers\Api\Client\Pterodactyl\SubdomainController::class, 'createRecord']);
             Route::delete('/', [\App\Http\Controllers\Api\Client\Pterodactyl\SubdomainController::class, 'deleteRecord']);
 
         });
-});
+    });
 });

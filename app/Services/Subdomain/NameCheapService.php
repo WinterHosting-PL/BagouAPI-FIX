@@ -175,11 +175,7 @@ class NameCheapService
                 'required',
                 Rule::in(['A', 'AAAA','CNAME','SRV']),
             ],
-            'ttl' =>  [
-                'required',
-                'integer',
-                'between:600,86400',
-            ],
+
             'port' => [
                 'nullable',
                 'integer',

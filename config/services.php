@@ -47,6 +47,10 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET')
     ],
+    'patreon' => [
+        'client_id' => env('PATREON_KEY'),
+        'client_secret' => env('PATREON_SECRET')
+    ],
     'discord' => [
         'token' => env('DISCORD_TOKEN'),
         'server' => env('DISCORD_SERVER'),

@@ -108,4 +108,5 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserGitHub::class, 'user_id');
     }
+
 }

@@ -41,6 +41,7 @@ class CloudflareService
     }
 
     public function create(Request $request) {
+
         $validated = $request->validate([
             'key' => 'required',
             'domain' => 'required',
@@ -51,7 +52,7 @@ class CloudflareService
             ],
             'value' => 'required',
             'ttl' =>  [
-                'required',
+                'nullable',
                 'integer',
                 'between:600,86400',
             ],
@@ -69,7 +70,6 @@ class CloudflareService
             'weight' => 'nullable|integer|between:0,65535',
             'service' => 'nullable|string'
         ]);
-
         $domain = $validated['domain'];
         $type = $validated['recordType'];
         $key = $validated['key'];
@@ -82,7 +82,7 @@ class CloudflareService
         }
         $putData = [
             'content' => $validated['value'],
-            'ttl' => intval($validated['ttl']),
+            'ttl' => $validated['ttl'] ? intval($validated['ttl']) : 600,
             'name' => $validated['record'],
             'proxied' => false,
             'type' => $validated['recordType'],
@@ -113,11 +113,7 @@ class CloudflareService
         $validated = $request->validate([
             'key' => 'required',
             'domain' => 'required',
-            'record' => 'required',
-            'recordType' => [
-                'required',
-                Rule::in(['A', 'AAAA','CNAME','SRV']),
-            ]
+            'record' => 'required'
         ]);
         $domain = $validated['domain'];
         $record = $validated['record'];
