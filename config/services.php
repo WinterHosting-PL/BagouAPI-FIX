@@ -58,11 +58,18 @@ return [
         'client_id' => env('DISCORD_CLIENT'),
         'client_secret' => env('DISCORD_CLIENT_SECRET'),
         'redirect' => env('DISCORD_OAUTH_REDIRECTION_URL'),
-        'accountredirect' => env('DISCORD_ACCOUNT_REDIRECTION_URL')
+        'accountredirect' => env('DISCORD_ACCOUNT_REDIRECTION_URL'),
+        'botkey' => env('BAGOUOX_API_KEY')
     ],
     'infomaniak' => [
         'api' => env('INFOMANIAK_KEY'),
         'secret' => env("INFOMANIAK_SECRET"),
         'key' => env('INFOMANIAK_V3Key')
-    ]
+    ],
+    'encryption' => [
+        'PBKDF' => [
+            'shared_key' => env('PBKDF_SHARED_KEY'),
+            'iteration' => env('PBKDF_ITERATION')
+        ],
+    ],
 ];

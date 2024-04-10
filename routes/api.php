@@ -10,9 +10,7 @@ use App\Http\Controllers\Api\Client\Web\Auth\PasskeysController;
 use App\Http\Controllers\Api\Client\Web\Blog\BlogController;
 use App\Http\Controllers\Api\Client\Web\Blog\CategoryController;
 use App\Http\Controllers\Api\Client\Web\Shop\Orders\OrdersController;
-use App\Http\Controllers\ClientController;
 use Illuminate\Http\Request;
-use Illuminate\Support\FacadesRoute;
 
 /*
 |--------------------------------------------------------------------------
@@ -88,6 +86,8 @@ Route::prefix('client')->group(function () {
             Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
             Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
             Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
+            Route::get('/getDiscordTicket/{ticketID}', [TicketController::class, 'getDiscordTranscript']);
+
         });
         Route::prefix('auth')->group(function () {
             Route::post('/login', [App\Http\Controllers\Api\Client\Web\Auth\LoginController::class, 'login'])->name('login');
