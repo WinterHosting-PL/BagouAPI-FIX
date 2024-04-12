@@ -392,7 +392,7 @@ class TicketController extends Controller
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
         }
-        if($request->discord !== "false") {
+        if ($request->discord !== "false") {
             $apikey = config('services.discord.botkey');
             $request = Http::withToken($apikey)->get("https://bagouox.b450.eu/tickets?email=$user->email");
             if ($request->successful()) {
@@ -589,7 +589,6 @@ class TicketController extends Controller
     }
 
 
-
     public function getDiscordTranscript(int $ticketID)
     {
         $user = auth('sanctum')->user();
@@ -632,4 +631,82 @@ class TicketController extends Controller
         }
 
     }
+
+    public function sendToDiscord(int $ticketID, Request $request)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
+        }
+        $apikey = config('services.discord.botkey');
+        $salt = "";
+        $encodedData = "";
+        try {
+            $encryptionService = new EncryptionService();
+            $salt = $encryptionService->CreateSalt();
+            $key = $encryptionService->PBKDF2Encode($salt);
+            $encodedData = $encryptionService->EncryptXChaCha($request->data, $key);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to encode ticket message data.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        $request = Http::withToken($apikey)->post("https://bagouox.b450.eu/ticket/$ticketID", [
+            'email' => $user->email,
+            'content' => $encodedData,
+            'salt' => $salt
+        ]);
+        if (!$request->successful()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to send ticket message to Discord.'
+            ], $request->status());
+        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Ticket message sent to Discord successfully.'
+        ]);
+    }
+    public function closeDiscord(int $ticketID) {
+        $user = auth('sanctum')->user();
+       if (!$user) {
+           return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
+       }
+        $apikey = config('services.discord.botkey');
+
+        $request = Http::withToken($apikey)->delete("https://bagouox.b450.eu/ticket/$ticketID", ["email" => $user->email]);
+        if (!$request->successful()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to send action to Discord.'
+            ], $request->status());
+        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Ticket was closed successfully.'
+        ]);
+    }
+    public function downloadDiscordAttachment(int $ticketID, string $attachmentUUID) {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'You need to be logged.'], 500);
+        }
+        $apikey = config('services.discord.botkey');
+
+        $request = Http::withToken($apikey)->get("https://bagouox.b450.eu/ticket/$ticketID/attachment/$attachmentUUID?email=$user->email");
+        if (!$request->successful()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to get attachment.'
+            ], $request->status());
+        }
+
+        return response($request->body(), 200, [
+            'Content-Type' => $request->header('Content-Type'),
+            'Content-Disposition' => $request->header('Content-Disposition')
+        ]);
+    }
+
 }

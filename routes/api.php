@@ -86,7 +86,10 @@ Route::prefix('client')->group(function () {
             Route::get('/{id}/details', [TicketController::class, 'getTicketDetails']);
             Route::get('/{attachmentId}/download', [TicketController::class, 'downloadAttachment']);
             Route::get('/getLasted', [TicketController::class, 'getLastedTicketNumber']);
-            Route::get('/getDiscordTicket/{ticketID}', [TicketController::class, 'getDiscordTranscript']);
+            Route::get('/discordTicket/{ticketID}', [TicketController::class, 'getDiscordTranscript']);
+            Route::post('/discordTicket/{ticketID}', [TicketController::class, 'sendToDiscord']);
+            Route::delete('/discordTicket/{ticketID}', [TicketController::class, 'closeDiscord']);
+            Route::get('/discordTicket/{ticketID}/attachment/{attachmentUUID}', [TicketController::class, 'downloadDiscordAttachment']);
 
         });
         Route::prefix('auth')->group(function () {

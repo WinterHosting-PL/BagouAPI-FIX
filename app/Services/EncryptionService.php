@@ -11,12 +11,14 @@ class EncryptionService
     // Encrypt string using XChaCha20 encryption
     public function EncryptXChaCha($plainText, $key)
     {
-        if (strlen($key) !== 32) {
+        $decodedKey = base64_decode($key);
+
+        if (strlen($decodedKey) !== SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES) {
             throw new Exception('Invalid key length');
         }
 
         $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
-        $ciphertext = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($plainText, '', $nonce, $key);
+        $ciphertext = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($plainText, '', $nonce, $decodedKey);
         return base64_encode($nonce . $ciphertext);
     }
 
@@ -60,6 +62,6 @@ class EncryptionService
     // Create random salt
     public function CreateSalt()
     {
-        return Str::random(16);
+        return Str::random(32);
     }
 }
