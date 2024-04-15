@@ -25,7 +25,8 @@
         "web-auth/cose-lib": "^4.2",
         "weidner/goutte": "^2.2",
         "ext-xmlwriter": "*",
-        "ext-sodium": "*"
+        "ext-sodium": "*",
+        "ext-zip": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

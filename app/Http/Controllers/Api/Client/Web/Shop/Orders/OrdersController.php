@@ -13,8 +13,6 @@ use App\Models\Products;
 use App\Models\Orders;
 use App\Models\User;
 use App\Models\License;
-use Illuminate\Support\Facades\Storage;
-use League\ISO3166\ISO3166;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Validator;
 
@@ -120,10 +118,6 @@ class OrdersController extends BaseController
             $totalPrice += $productdata->price;
             if($productdata->reccurent) {
                 $data['mode'] = 'subscription';
-                $data['line_items'] = [[
-                    'price' => $productdata->stripe_price_id,
-                    'quantity' => 1
-                ]];
                 $data['customer_creation'] = null;
                 break;
             }
@@ -335,30 +329,39 @@ class OrdersController extends BaseController
         if(!$order) {
             return response()->json(['status' => 'error', 'message' => 'No orders found!'], 500);
         }
+        $randomString = bin2hex(random_bytes(8));
+        $basePath = storage_path('app/private/tmp/' . $randomString);
+
+        if (!file_exists($basePath)) {
+            mkdir($basePath, 0777, true);
+        }
         $archive = new \ZipArchive();
-        $archiveName = "$order->id.zip";
+        $archiveName = storage_path('app/private/tmp/') . "/$order->id.zip";
         if ($archive->open($archiveName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($order->products as $product) {
-                $productname = Products::where('id', $product)->firstOrFail()->name;
-                if (is_dir($productname)) {
-                    $this->deleteDirectory($productname);
+                $productName = Products::where('id', $product)->firstOrFail()->name;
+                $productDir = $basePath . '/' . $productName;
+
+                if (is_dir($productDir)) {
+                    $this->deleteDirectory($productDir);
                 }
+
                 $zipFileName = storage_path('app/private/zips/' . $product . '.zip');
                 if(!file_exists($zipFileName)) {
-                    return response()->json(['status' => 'error', 'message' => "Errors can\'t add all files. $zipFileName not exist!"], 500);
-
+                    return response()->json(['status' => 'error', 'message' => "Errors can't add all files. $zipFileName not exist!"], 500);
                 }
-                if ($archive->locateName((string) $productname) === false) {
-                    $archive->addEmptyDir((string) $productname); // Crée le dossier avec l'ID
+
+                if ($archive->locateName((string) $productName) === false) {
+                    $archive->addEmptyDir((string) $productName);
                     $subArchive = new \ZipArchive();
                     if ($subArchive->open($zipFileName) === true) {
-                        $subArchive->extractTo($productname); // Extrait le contenu du fichier ZIP dans le dossier correspondant
+                        $subArchive->extractTo($productDir);
                         $subArchive->close();
-                        $subFiles = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($productname));
+                        $subFiles = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($productDir));
                         foreach ($subFiles as $subFile) {
                             if (!$subFile->isDir()) {
                                 $filePath = $subFile->getPathname();
-                                $relativePath = $productname . '/' . str_replace($productname . '/', '', $filePath);
+                                $relativePath = $productName . '/' . str_replace($productDir . '/', '', $filePath);
                                 $archive->addFile($filePath, $relativePath);
                             }
                         }
@@ -369,7 +372,6 @@ class OrdersController extends BaseController
                     }
                 }
                 $archive->deleteName($product);
-
             }
             $archive->close();
         } else {
@@ -378,12 +380,9 @@ class OrdersController extends BaseController
 
         $order->update(['token' => '']);
         $order->save();
-       /* foreach ($order->products as $product) {
-            if (is_dir(Products::where('id', $product)->firstOrFail()->name)) {
-                $this->deleteDirectory(Products::where('id', $product)->firstOrFail()->name);
-            }
-        }*/
-        return response()->download($archiveName, $archiveName, ['Content-Type: application/zip'])->deleteFileAfterSend(true);;
+        $this->deleteDirectory($basePath);
+
+        return response()->download($archiveName, "$order->id.zip", ['Content-Type: application/zip'])->deleteFileAfterSend();
 
     }
     public function getDownloadOnelink(String $id): \Illuminate\Http\JsonResponse
