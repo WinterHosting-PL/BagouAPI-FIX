@@ -13,9 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('licensetable', function (Blueprint $table) {
-            $table->string("sxcid")->nullable();
-
+        Schema::table('products', function (Blueprint $table) {
+            $table->boolean('autoinstaller')->default(0);
         });
     }
 
@@ -26,8 +25,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('licensetable', function (Blueprint $table) {
-            $table->dropColumn('sxcid');
+        Schema::table('products', function (Blueprint $table) {
+            //
         });
     }
 };

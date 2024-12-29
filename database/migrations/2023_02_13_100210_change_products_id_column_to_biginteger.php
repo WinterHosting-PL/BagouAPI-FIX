@@ -13,13 +13,9 @@ class ChangeProductsIdColumnToBiginteger extends Migration
      */
     public function up()
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropForeign(['extension_product']);
-        });
-
-        Schema::table('products', function (Blueprint $table) {
+	Schema::table('products', function (Blueprint $table) {
             $table->unsignedBigInteger('id')->autoIncrement()->change();
-            $table->unsignedBigInteger('extension_product')->change();
+            $table->unsignedBigInteger('extension_product');
         });
 
         Schema::table('products', function (Blueprint $table) {

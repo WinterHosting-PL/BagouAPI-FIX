@@ -13,13 +13,9 @@ return new class extends Migration
      */
     public function up()
     {
-
-        Schema::table('license', function (Blueprint $table) {
-            $table->integer('user_id')->unsigned()->nullable();
-            $table->foreign('user_id')->references('id')->on('users');
-
+        Schema::table('products', function (Blueprint $table) {
+            $table->boolean('extension')->default(false);
         });
-        
     }
 
     /**
@@ -29,10 +25,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('license', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
+        Schema::table('products', function (Blueprint $table) {
+
+            $table->dropColumn('extension');
+            $table->dropColumn('extension_product');
         });
-       
     }
 };

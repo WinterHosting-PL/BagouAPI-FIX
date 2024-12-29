@@ -26,10 +26,6 @@ return new class extends Migration
             $table->decimal('price', 8, 2);
             $table->timestamps();
         });
-        Schema::table('license', function (Blueprint $table) {
-            $table->unsignedBigInteger('order_id')->unsigned()->nullable();
-            $table->foreign('order_id')->references('id')->on('orders');
-        });
     }
     
         
@@ -42,9 +38,5 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('orders');
-        Schema::table('license', function (Blueprint $table) {
-            $table->dropForeign(['order_id']);
-            $table->dropColumn('order_id');
-        });
     }
 };

@@ -13,11 +13,6 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('license', function (Blueprint $table) {
-            $table->dropColumn('id');
-            $table->string('transaction')->primary()->change();
-        });
-
         Schema::dropIfExists('ticket_messages');
         Schema::dropIfExists('tickets');
         Schema::create('tickets', function (Blueprint $table) {
@@ -26,7 +21,8 @@ return new class extends Migration
             $table->string('status');
             $table->text('subject');
             $table->integer('user_id')->unsigned();
-            $table->string('license');
+            $table->string('license', 255); // Match length and type
+            $table->foreign('license')->references('transaction')->on('licenses');
             $table->text('logs_url')->nullable();
             $table->json('participants')->nullable();
 
@@ -34,8 +30,6 @@ return new class extends Migration
             $table->foreign('user_id')
                 ->references('id')
                 ->on('users');
-
-            $table->foreign('license')->references('transaction')->on('license');
         });
 
         Schema::create('ticket_messages', function (Blueprint $table) {

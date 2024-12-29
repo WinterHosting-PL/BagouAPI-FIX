@@ -28,21 +28,12 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             $table->renameColumn('mollie_id', 'stripe_id');
         });
-        // Rename "license" table to "licenses" table
-        Schema::rename('license', 'licenses');
+
         // Add product_id to licenses table as a foreign key
         Schema::table('products', function (Blueprint $table) {
             $table->primary('id');
         });
 
-        Schema::table('licenses', function (Blueprint $table) {
-            $table->dropColumn('fullname');
-            $table->integer('product_id')->unsigned();
-            $table->foreign('product_id')
-                ->references('id')
-                ->on('products');
-
-        });
 
 
         // Add address, country, city, region, postal_code, and name to orders table (non-null)
@@ -70,7 +61,7 @@ return new class extends Migration
 
         Schema::table('orders', function (Blueprint $table) {
             $table->dropColumn('products');
-            $table->integer('product_id')->unsigned();
+            $table->unsignedBigInteger('product_id');
             $table->foreign('product_id')
                 ->references('id')
                 ->on('products');
@@ -80,18 +71,11 @@ return new class extends Migration
             $table->renameColumn('stripe_id', 'mollie_id');
         });
 
-        Schema::rename('licenses', 'license');
 
         Schema::table('products', function (Blueprint $table) {
             $table->dropPrimary('products_id_primary');
         });
 
-        Schema::table('licenses', function (Blueprint $table) {
-            $table->dropForeign(['product_id']);
-            $table->dropColumn('product_id');
-            $table->string('name');
-            $table->string('fullname');
-        });
 
         Schema::table('orders', function (Blueprint $table) {
             $table->dropColumn('address');
